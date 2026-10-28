@@ -1,0 +1,9 @@
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+.env
+volume/
+spike/logs/*.log
+spike/spike-report.md

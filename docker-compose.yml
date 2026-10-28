@@ -1,0 +1,15 @@
+# LocalStack for AWS (single authenticated image since March 2026).
+# Verify the current image name in the LocalStack docs if the pull fails.
+services:
+  localstack:
+    image: localstack/localstack:latest
+    container_name: aegis-localstack
+    ports:
+      - "4566:4566"
+    environment:
+      - LOCALSTACK_AUTH_TOKEN=${LOCALSTACK_AUTH_TOKEN:?set LOCALSTACK_AUTH_TOKEN}
+      - DEBUG=0
+      - PERSISTENCE=0
+    volumes:
+      - "./volume:/var/lib/localstack"
+      - "/var/run/docker.sock:/var/run/docker.sock"
