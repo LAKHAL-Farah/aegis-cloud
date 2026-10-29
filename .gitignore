@@ -7,3 +7,18 @@ crash.log
 volume/
 spike/logs/*.log
 spike/spike-report.md
+
+# --- AegisCloud Stage 1 ---
+.terraform/
+.terraform.lock.hcl.bak
+*.tfstate
+*.tfstate.*
+*.tfplan
+build/
+.venv/
+__pycache__/
+.localstack-data/
+infracost-*.json
+.infracost/
+.env
+*.zip
