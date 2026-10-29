@@ -28,8 +28,9 @@ resource "aws_organizations_policy" "scp" {
   description = "AegisCloud SCP: ${each.key}"
   type        = "SERVICE_CONTROL_POLICY"
   content     = each.value
-}
 
+  depends_on = [aws_organizations_organization.this]
+}
 resource "aws_organizations_policy_attachment" "this" {
   for_each  = local.attachments
   policy_id = aws_organizations_policy.scp[each.value.scp].id
