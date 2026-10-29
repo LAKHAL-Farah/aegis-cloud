@@ -22,3 +22,4 @@ infracost-*.json
 .infracost/
 .env
 *.zip
+terraform/modules/*/.terraform.lock.hcl
