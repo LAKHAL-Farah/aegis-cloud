@@ -128,6 +128,7 @@ module "archive" {
 
 resource "aws_cloudtrail" "main" {
   #checkov:skip=CKV2_AWS_10:CloudWatch Logs delivery + metric filters (CIS 3.4 / section 4) are planned for Stage 5; tracked in cis-mapping.md
+  #checkov:skip=CKV_AWS_252:No SNS topic by design; trail events reach responders through EventBridge to n8n in Stage 4 (ADR-0005)
   count                         = var.create_trail ? 1 : 0
   name                          = var.trail_name
   s3_bucket_name                = var.log_bucket_name

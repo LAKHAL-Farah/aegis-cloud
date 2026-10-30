@@ -1,0 +1,9 @@
+# Checkov configuration. RULE: every skip has a reason, and this list stays short.
+# Per-resource skips live next to the code as  #checkov:skip=CKV_...:reason
+framework:
+  - terraform
+
+skip-check:
+  - CKV_AWS_144   # S3 cross-region replication: single-region lab, would double cost on real AWS
+  - CKV2_AWS_62   # S3 event notifications: no consumer exists yet (Stage 3 adds one for the log bucket)
+  - CKV2_AWS_10   # CloudTrail -> CloudWatch Logs: planned Stage 5 together with CIS 4.x metric filters
