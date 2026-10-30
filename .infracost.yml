@@ -1,0 +1,14 @@
+version: 0.1
+projects:
+  - path: terraform/live/workload
+    name: workload
+    terraform_vars:
+      offline: "true"
+  - path: terraform/live/management
+    name: management
+    terraform_vars:
+      offline: "true"
+  - path: terraform/live/log-archive
+    name: log-archive
+    terraform_vars:
+      offline: "true"

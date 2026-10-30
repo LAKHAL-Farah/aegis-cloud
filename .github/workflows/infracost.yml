@@ -1,0 +1,29 @@
+name: infracost
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  cost:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}   # forks have no secret
+    env:
+      INFRACOST_API_KEY: ${{ secrets.INFRACOST_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: infracost/actions/setup@v3
+        with:
+          api-key: ${{ secrets.INFRACOST_API_KEY }}
+      - name: Estimate cost of the PR
+        run: infracost breakdown --config-file .infracost.yml --format json --out-file /tmp/infracost.json
+      - name: Comment on the PR
+        run: |
+          infracost comment github --path /tmp/infracost.json \
+            --repo "$GITHUB_REPOSITORY" \
+            --github-token "${{ github.token }}" \
+            --pull-request "${{ github.event.pull_request.number }}" \
+            --behavior update
