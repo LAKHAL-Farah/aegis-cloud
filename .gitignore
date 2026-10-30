@@ -23,3 +23,4 @@ infracost-*.json
 .env
 *.zip
 terraform/modules/*/.terraform.lock.hcl
+zz_offline_override.tf

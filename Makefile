@@ -80,13 +80,18 @@ test:  ## terraform test for every module that has tests
 >   fi; done
 
 plan-json:  ## offline plans -> build/plans/<root>.json (input for Conftest and the score script)
-> mkdir -p build/plans
-> for r in $(ROOTS); do \
+> mkdir -p build/plans build/tfstate
+> trap 'rm -f $(TF_DIR)/*/zz_offline_override.tf' EXIT; \
+>  for r in $(ROOTS); do \
+>   d=$(TF_DIR)/$$r; \
+>   printf 'terraform {\n  backend "local" {\n    path = "%s"\n  }\n}\n' "$(CURDIR)/build/tfstate/$$r.tfstate" > $$d/zz_offline_override.tf; \
 >   export TF_DATA_DIR=$(CURDIR)/build/tfdata/$$r; \
->   terraform -chdir=$(TF_DIR)/$$r init -backend=false -input=false >/dev/null; \
->   terraform -chdir=$(TF_DIR)/$$r plan -input=false -var offline=true -out=$(CURDIR)/build/plans/$$r.tfplan >/dev/null; \
->   terraform -chdir=$(TF_DIR)/$$r show -json $(CURDIR)/build/plans/$$r.tfplan > build/plans/$$r.json; \
->   echo "plan json: build/plans/$$r.json"; done
+>   terraform -chdir=$$d init -input=false -reconfigure >/dev/null; \
+>   terraform -chdir=$$d plan -input=false -var offline=true -out=$(CURDIR)/build/plans/$$r.tfplan >/dev/null; \
+>   terraform -chdir=$$d show -json $(CURDIR)/build/plans/$$r.tfplan > build/plans/$$r.json; \
+>   rm -f $$d/zz_offline_override.tf; \
+>   echo "plan json: build/plans/$$r.json"; \
+>  done
 
 security: plan-json  ## Checkov + Conftest
 > $(PY) -m checkov.main -d $(TF_DIR) --config-file policies/checkov/.checkov.yaml
