@@ -1,0 +1,73 @@
+name: terraform-ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: terraform-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  TF_VERSION: "1.9.8"          # must be >= 1.7 (mock_provider)
+  CONFTEST_VERSION: "0.56.0"
+
+jobs:
+  static:
+    name: fmt / validate / tflint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: false
+      - uses: terraform-linters/setup-tflint@v4
+      - run: make fmt-check
+      - run: make validate
+      - run: make lint
+        env:
+          GITHUB_TOKEN: ${{ github.token }}   # avoids rate limits when tflint downloads its plugin
+
+  unit-tests:
+    name: terraform test (modules)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: false
+      - run: make test
+
+  checkov:
+    name: Checkov
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install checkov
+      - run: checkov -d terraform/live --config-file policies/checkov/.checkov.yaml
+
+  conftest:
+    name: OPA / Conftest on the plan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: false
+      - name: Install conftest
+        run: |
+          curl -sL "https://github.com/open-policy-agent/conftest/releases/download/v${CONFTEST_VERSION}/conftest_${CONFTEST_VERSION}_Linux_x86_64.tar.gz" | tar xz conftest
+          sudo mv conftest /usr/local/bin/
+      - run: make plan-json
+      - run: conftest test --policy policies/opa build/plans/*.json
