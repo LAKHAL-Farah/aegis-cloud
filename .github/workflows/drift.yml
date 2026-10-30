@@ -1,0 +1,58 @@
+name: drift
+
+# Honest note: LocalStack in CI starts empty each run, so "nightly drift" here is a *drill*:
+# the job builds the environment, optionally injects drift, then proves the detector fires.
+# On real AWS (or a persistent self-hosted LocalStack) the same script runs against live state.
+on:
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+    inputs:
+      simulate_drift:
+        description: "Inject drift before checking (should fail the job and open an issue)"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  drift:
+    runs-on: ubuntu-latest
+    env:
+      LOCALSTACK_AUTH_TOKEN: ${{ secrets.LOCALSTACK_AUTH_TOKEN }}
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      AWS_DEFAULT_REGION: us-east-1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.8"
+          terraform_wrapper: false
+      - name: Skip when no LocalStack token is configured
+        if: ${{ env.LOCALSTACK_AUTH_TOKEN == '' }}
+        run: echo "LOCALSTACK_AUTH_TOKEN secret not set; nothing to do." && exit 0
+      - name: Start LocalStack and build the landing zone
+        if: ${{ env.LOCALSTACK_AUTH_TOKEN != '' }}
+        run: |
+          make up
+          make apply-all
+      - name: Inject drift (drill)
+        if: ${{ env.LOCALSTACK_AUTH_TOKEN != '' && (github.event_name == 'schedule' || inputs.simulate_drift) }}
+        run: |
+          AWS_ACCESS_KEY_ID=444444444444 aws --endpoint-url http://localhost:4566 \
+            s3api delete-public-access-block --bucket aegis-data-444444444444
+      - name: Check drift
+        id: drift
+        if: ${{ env.LOCALSTACK_AUTH_TOKEN != '' }}
+        run: bash scripts/drift_check.sh
+        continue-on-error: true
+      - name: Open an issue when drift is detected
+        if: ${{ steps.drift.outcome == 'failure' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue create --title "Drift detected $(date -u +%F)" \
+            --body "scripts/drift_check.sh reported drift. See the run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
