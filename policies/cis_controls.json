@@ -1,0 +1,18 @@
+[
+  {"id": "1.5",   "title": "MFA enabled for the root account",                    "live": "root_mfa"},
+  {"id": "1.8",   "title": "Password policy requires minimum length of 14",       "live": "password_policy_length"},
+  {"id": "1.9",   "title": "Password policy prevents reuse (24)",                 "live": "password_policy_reuse"},
+  {"id": "1.16",  "title": "No policy allows full *:* administrative privileges", "checkov": ["CKV_AWS_62", "CKV_AWS_63"], "rego": ["AEG-IAM-001", "AEG-IAM-002"]},
+  {"id": "2.1.5", "title": "S3 Block Public Access enabled on all buckets",       "checkov": ["CKV_AWS_53", "CKV_AWS_54", "CKV_AWS_55", "CKV_AWS_56"], "rego": ["AEG-S3-001"], "live": "s3_public_block"},
+  {"id": "3.1",   "title": "CloudTrail enabled in all regions",                   "checkov": ["CKV_AWS_67"], "live": "trail_multi_region"},
+  {"id": "3.2",   "title": "CloudTrail log file validation enabled",              "checkov": ["CKV_AWS_36"], "live": "trail_validation"},
+  {"id": "3.4",   "title": "CloudTrail integrated with CloudWatch Logs",          "note": "planned Stage 5"},
+  {"id": "3.6",   "title": "S3 access logging on the CloudTrail bucket",          "checkov": ["CKV_AWS_18"], "live": "trail_bucket_logging"},
+  {"id": "3.7",   "title": "CloudTrail logs encrypted with KMS",                  "checkov": ["CKV_AWS_35"], "live": "trail_kms"},
+  {"id": "3.8",   "title": "Customer-managed key rotation enabled",               "checkov": ["CKV_AWS_7"], "live": "kms_rotation"},
+  {"id": "3.9",   "title": "VPC flow logging enabled",                            "checkov": ["CKV2_AWS_11"], "live": "vpc_flow_logs"},
+  {"id": "4.x",   "title": "Monitoring: metric filters and alarms (CIS section 4)", "note": "planned Stage 5"},
+  {"id": "5.1",   "title": "No NACL allows the world to reach admin ports",       "rego": ["AEG-NET-002"]},
+  {"id": "5.2",   "title": "No security group allows the world to reach admin ports", "checkov": ["CKV_AWS_24", "CKV_AWS_25"], "rego": ["AEG-NET-001", "AEG-NET-003"], "live": "sg_admin_ports"},
+  {"id": "5.3",   "title": "Default security group restricts all traffic",        "checkov": ["CKV2_AWS_12"], "live": "default_sg_closed"}
+]
