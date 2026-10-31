@@ -1,0 +1,81 @@
+name: range-ci
+
+on:
+  pull_request:
+    paths:
+      - "cloudpurple/**"
+      - "docs/detection-contract.md"
+  push:
+    branches: [main]
+    paths:
+      - "cloudpurple/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: range-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  TF_VERSION: "1.9.8"
+
+jobs:
+  static:
+    name: fmt / validate (range only)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: false
+      - run: terraform fmt -check -recursive cloudpurple/terraform
+      - name: validate each range root (no backend, no LocalStack)
+        run: |
+          for r in purple hardened; do
+            terraform -chdir=cloudpurple/terraform/$r init -backend=false -input=false
+            terraform -chdir=cloudpurple/terraform/$r validate
+          done
+
+  twin-unit-tests:
+    name: terraform test (range-target module)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: false
+      - run: |
+          terraform -chdir=cloudpurple/terraform/modules/range-target init -backend=false -input=false
+          terraform -chdir=cloudpurple/terraform/modules/range-target test
+
+  catalogue:
+    name: scenario catalogue + scoring logic (pytest, no LocalStack)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r cloudpurple/requirements.txt
+      - run: python3 -m pytest cloudpurple/tests -q
+
+  isolation:
+    name: Stage 1 gates never scan the range (ADR-0006)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Checkov on terraform/live must still pass, and must ignore cloudpurple
+        run: |
+          pip install checkov
+          checkov -d terraform/live --config-file policies/checkov/.checkov.yaml
+      - name: cloudpurple must not be reachable from terraform/live
+        run: |
+          if grep -rl "cloudpurple" terraform/live policies/opa policies/checkov 2>/dev/null; then
+            echo "terraform/live or the Stage 1 policies reference cloudpurple; this breaks ADR-0006" >&2
+            exit 1
+          fi
+          echo "ok: no reference found"

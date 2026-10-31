@@ -104,3 +104,4 @@ score: plan-json  ## compliance score (needs LocalStack running + applied)
 
 drift:  ## nightly-style drift check on all roots
 > bash scripts/drift_check.sh
+-include cloudpurple/range.mk

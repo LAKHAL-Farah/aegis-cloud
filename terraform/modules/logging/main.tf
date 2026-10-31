@@ -126,16 +126,50 @@ module "archive" {
 
 # ---------- management account: the trail ----------
 
+# ---------- management account: the trail ----------
+
+resource "aws_kms_key" "trail" {
+  #checkov:skip=CKV_AWS_109:Key policies must use Resource "*" (it means "this key") and delegate to IAM via the account root
+  #checkov:skip=CKV_AWS_111:Same: key-policy statements apply to this key only
+  #checkov:skip=CKV_AWS_356:Same: Resource "*" in a key policy is the key itself
+  count                   = var.create_trail_key ? 1 : 0
+  description             = "AegisCloud CloudTrail encryption key (management account)"
+  enable_key_rotation     = true
+  deletion_window_in_days = 7
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid       = "EnableRootPermissions"
+        Effect    = "Allow"
+        Principal = { AWS = "arn:aws:iam::${var.management_account_id}:root" }
+        Action    = "kms:*"
+        Resource  = "*"
+      },
+      {
+        Sid       = "AllowCloudTrailToEncrypt"
+        Effect    = "Allow"
+        Principal = { Service = "cloudtrail.amazonaws.com" }
+        Action    = ["kms:GenerateDataKey*", "kms:DescribeKey"]
+        Resource  = "*"
+        Condition = { StringEquals = { "aws:SourceArn" = local.trail_arn } }
+      },
+    ]
+  })
+}
+
 resource "aws_cloudtrail" "main" {
   #checkov:skip=CKV2_AWS_10:CloudWatch Logs delivery + metric filters (CIS 3.4 / section 4) are planned for Stage 5; tracked in cis-mapping.md
   #checkov:skip=CKV_AWS_252:No SNS topic by design; trail events reach responders through EventBridge to n8n in Stage 4 (ADR-0005)
   count                         = var.create_trail ? 1 : 0
   name                          = var.trail_name
   s3_bucket_name                = var.log_bucket_name
-  kms_key_id                    = var.kms_key_arn
+  kms_key_id                    = var.create_trail_key ? aws_kms_key.trail[0].arn : var.kms_key_arn
   is_multi_region_trail         = true
   include_global_service_events = true
   enable_log_file_validation    = true
   is_organization_trail         = var.is_organization_trail
   enable_logging                = true
 }
+

@@ -5,7 +5,11 @@ variable "use_org_trail" {
 }
 
 module "organization" {
-  source = "../../modules/organization"
+  source                 = "../../modules/organization"
+  create_member_accounts = true
+  member_accounts = {
+    "aegis-hardened" = { email = "aegis-hardened@example.com", ou = "workloads" }
+  }
 }
 
 data "terraform_remote_state" "log_archive" {
@@ -28,7 +32,6 @@ data "terraform_remote_state" "log_archive" {
 
 locals {
   log_bucket = try(data.terraform_remote_state.log_archive[0].outputs.archive_bucket_name, "offline-placeholder")
-  log_kms    = try(data.terraform_remote_state.log_archive[0].outputs.kms_key_arn, "arn:aws:kms:us-east-1:222222222222:key/offline-placeholder")
 }
 
 module "trail" {
@@ -40,9 +43,9 @@ module "trail" {
 
   create_log_archive    = false
   create_trail          = true
+  create_trail_key      = true # was: kms_key_arn = local.log_kms
   is_organization_trail = var.use_org_trail
   log_bucket_name       = local.log_bucket
-  kms_key_arn           = local.log_kms
 
   depends_on = [module.organization]
 }
