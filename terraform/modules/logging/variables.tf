@@ -56,3 +56,10 @@ variable "kms_key_arn" {
   type        = string
   default     = null
 }
+
+
+variable "create_trail_key" {
+  description = "Create a KMS key in the management account for the trail. Used instead of kms_key_arn when the key must be in the trail's own account (LocalStack ENFORCE_IAM rejects a cross-account key ARN)."
+  type        = bool
+  default     = false
+}

@@ -24,3 +24,9 @@ infracost-*.json
 *.zip
 terraform/modules/*/.terraform.lock.hcl
 zz_offline_override.tf
+
+# --- AegisCloud Stage 2 ---
+cloudpurple/terraform/hardened/hardened.auto.tfvars
+build/range/
+build/alerts/
+.pytest_cache/

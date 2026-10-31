@@ -1,19 +1,29 @@
 # AegisCloud
 
-Terraform-built AWS landing zone (CIS-mapped) that gets attacked on purpose, detects the attack, and responds automatically. Runs on LocalStack for AWS; the same Terraform targets real AWS by swapping the provider endpoints.
+Terraform-built, CIS-mapped AWS landing zone that gets attacked on purpose, detects the attack, and responds automatically. Runs on LocalStack for AWS; the same Terraform targets real AWS by changing the provider endpoints (see ADR-0004).
 
-## Start here: the feasibility spike
+> Portfolio / learning project. Simulated behaviour is labelled as simulated; see `docs/localstack-limitations.md`.
 
-```bash
-export LOCALSTACK_AUTH_TOKEN=<your student/hobby token>
-make up        # starts LocalStack
-make spike     # applies 6 probes + runs 17 behaviour checks
-cat spike/spike-report.md
-```
+## Status
 
-Paste `spike-report.md` back into the chat. It decides what Stage 1 relies on LocalStack for and what you build yourself.
+| Stage | State |
+| --- | --- |
+| 1. SecureLanding | in progress, see `docs/STAGE1.md` |
+| 2. CloudPurple attack range | planned |
+| 3. Detection | planned |
+| 4. Response | planned |
 
-Requirements: Docker, Terraform >= 1.6, AWS CLI v2, curl.
+## Quick start
 
-## Stages
-See `docs/STAGE1.md` for the Stage 1 plan and repo conventions.
+    export LOCALSTACK_AUTH_TOKEN=<your token>
+    source scripts/env.sh
+    make reset          # LocalStack + all four accounts
+    make gate           # fmt, validate, tflint, unit tests, Checkov, Conftest
+    make score          # "N of M evaluable CIS controls passing"
+
+Requirements: Docker, Terraform >= 1.7, AWS CLI v2, tflint, conftest, Python 3.10+.
+
+## Docs
+
+* `docs/STAGE1.md`: the full build guide
+* `docs/cis-mapping.md`, `docs/threat-model.md`, `docs/adr/`, `docs/localstack-limitations.md`
