@@ -7,10 +7,6 @@ variable "account_id" {
   type = string
 }
 
-variable "region" {
-  type    = string
-  default = "us-east-1"
-}
 
 variable "hardened" {
   description = "false = deliberately vulnerable twin, true = hardened twin"

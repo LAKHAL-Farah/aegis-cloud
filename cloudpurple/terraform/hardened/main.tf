@@ -15,7 +15,6 @@ module "target" {
   source                   = "../modules/range-target"
   name                     = "hardened"
   account_id               = var.accounts[var.account_name]
-  region                   = var.region
   hardened                 = true
   permissions_boundary_arn = module.iam_baseline.boundary_policy_arn
   ami_id                   = var.ami_id

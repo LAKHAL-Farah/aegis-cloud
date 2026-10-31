@@ -7,7 +7,6 @@ module "target" {
   source     = "../modules/range-target"
   name       = "purple"
   account_id = var.accounts[var.account_name]
-  region     = var.region
   hardened   = false
   ami_id     = var.ami_id
 }
