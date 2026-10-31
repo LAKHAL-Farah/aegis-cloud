@@ -30,3 +30,9 @@ cloudpurple/terraform/hardened/hardened.auto.tfvars
 build/range/
 build/alerts/
 .pytest_cache/
+
+# --- AegisCloud Stage 2 ---
+cloudpurple/terraform/hardened/hardened.auto.tfvars
+build/range/
+build/alerts/
+.pytest_cache/
