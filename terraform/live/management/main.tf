@@ -5,7 +5,11 @@ variable "use_org_trail" {
 }
 
 module "organization" {
-  source = "../../modules/organization"
+  source                 = "../../modules/organization"
+  create_member_accounts = true
+  member_accounts = {
+    "aegis-hardened" = { email = "aegis-hardened@example.com", ou = "workloads" }
+  }
 }
 
 data "terraform_remote_state" "log_archive" {

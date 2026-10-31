@@ -9,3 +9,6 @@ output "ou_ids" {
 output "scp_names" {
   value = sort(keys(aws_organizations_policy.scp))
 }
+output "member_account_ids" {
+  value = { for k, a in aws_organizations_account.member : k => a.id }
+}
