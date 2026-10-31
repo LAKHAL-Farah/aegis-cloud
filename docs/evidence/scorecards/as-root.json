@@ -1,0 +1,258 @@
+{
+  "label": "as-root",
+  "run_id": "309eeb76",
+  "generated": "2026-10-31 15:41 UTC",
+  "summary": {
+    "total": 12,
+    "errored": 0,
+    "succeeded_on_purple": 12,
+    "detected": 0,
+    "prevented": 2,
+    "neither": 10,
+    "mean_mttd": null
+  },
+  "rows": [
+    {
+      "id": "S01",
+      "name": "Cloud infrastructure discovery",
+      "technique": "T1580",
+      "tactic": "Discovery",
+      "purple": {
+        "outcome": "SUCCEEDED",
+        "detail": "enumerated s3, ec2 instances, iam users, security groups",
+        "telemetry": "FULL"
+      },
+      "hardened": {
+        "outcome": "SUCCEEDED",
+        "detail": "enumerated s3, ec2 instances, iam users, security groups",
+        "telemetry": "-"
+      },
+      "detected": false,
+      "mttd": null,
+      "alert": null,
+      "verdict": "NEITHER"
+    },
+    {
+      "id": "S02",
+      "name": "S3 data exfiltration",
+      "technique": "T1530",
+      "tactic": "Collection",
+      "purple": {
+        "outcome": "SUCCEEDED",
+        "detail": "downloaded 12 objects from purple-data-555555555555",
+        "telemetry": "DATA-EVENT (lookup-events cannot see it; check the trail's S3 destination manually)"
+      },
+      "hardened": {
+        "outcome": "SUCCEEDED",
+        "detail": "downloaded 12 objects from hardened-data-402528835445",
+        "telemetry": "-"
+      },
+      "detected": false,
+      "mttd": null,
+      "alert": null,
+      "verdict": "NEITHER"
+    },
+    {
+      "id": "S03",
+      "name": "Backdoor IAM user + access key",
+      "technique": "T1136.003",
+      "tactic": "Persistence",
+      "purple": {
+        "outcome": "SUCCEEDED",
+        "detail": "created backdoor-309eeb76-S03 with AdministratorAccess, key LKIAYCWNRBDRY3RYBKGC",
+        "telemetry": "FULL"
+      },
+      "hardened": {
+        "outcome": "SUCCEEDED",
+        "detail": "created backdoor-309eeb76-S03 with AdministratorAccess, key LKIAV3OEWS5247UBXPQE",
+        "telemetry": "-"
+      },
+      "detected": false,
+      "mttd": null,
+      "alert": null,
+      "verdict": "NEITHER"
+    },
+    {
+      "id": "S04",
+      "name": "Disable CloudTrail logging",
+      "technique": "T1562.008",
+      "tactic": "Defense Evasion",
+      "purple": {
+        "outcome": "SUCCEEDED",
+        "detail": "stopped purple-trail",
+        "telemetry": "NONE"
+      },
+      "hardened": {
+        "outcome": "DENIED",
+        "detail": "User: arn:aws:iam::402528835445:root is not authorized to perform: cloudtrail:StopLogging on resource: arn:aws:cloudtrail:us-east-1:402528835445:trail/hardened-trail with an explicit deny in a service control policy: arn:aws:organizations::111111111111:policy/o-82d97b51d3/service_control_policy/p-393ce7be",
+        "prevented_by": "SCP",
+        "telemetry": "-"
+      },
+      "detected": false,
+      "mttd": null,
+      "alert": null,
+      "verdict": "PREVENTED"
+    },
+    {
+      "id": "S05",
+      "name": "Open a security group to the world",
+      "technique": "T1562.007",
+      "tactic": "Defense Evasion",
+      "purple": {
+        "outcome": "SUCCEEDED",
+        "detail": "opened 0.0.0.0/0:22 on sg-3faa0f7348ad4a1b2",
+        "telemetry": "FULL"
+      },
+      "hardened": {
+        "outcome": "SUCCEEDED",
+        "detail": "opened 0.0.0.0/0:22 on sg-68fd86e65d9028286",
+        "telemetry": "-"
+      },
+      "detected": false,
+      "mttd": null,
+      "alert": null,
+      "verdict": "NEITHER"
+    },
+    {
+      "id": "S06",
+      "name": "Backdoor bucket policy",
+      "technique": "T1537",
+      "tactic": "Exfiltration",
+      "purple": {
+        "outcome": "SUCCEEDED",
+        "detail": "granted 999999999999 read access on purple-data-555555555555",
+        "telemetry": "FULL"
+      },
+      "hardened": {
+        "outcome": "SUCCEEDED",
+        "detail": "granted 999999999999 read access on hardened-data-402528835445",
+        "telemetry": "-"
+      },
+      "detected": false,
+      "mttd": null,
+      "alert": null,
+      "verdict": "NEITHER"
+    },
+    {
+      "id": "S07",
+      "name": "Make the data bucket public",
+      "technique": "T1530",
+      "tactic": "Collection",
+      "purple": {
+        "outcome": "SUCCEEDED",
+        "detail": "disabled BPA and set public-read ACL on purple-data-555555555555",
+        "telemetry": "FULL"
+      },
+      "hardened": {
+        "outcome": "SUCCEEDED",
+        "detail": "disabled BPA and set public-read ACL on hardened-data-402528835445",
+        "telemetry": "-"
+      },
+      "detected": false,
+      "mttd": null,
+      "alert": null,
+      "verdict": "NEITHER"
+    },
+    {
+      "id": "S08",
+      "name": "Use a leaked access key",
+      "technique": "T1078.004",
+      "tactic": "Initial Access",
+      "purple": {
+        "outcome": "SUCCEEDED",
+        "detail": "used dev-svc key as arn:aws:iam::555555555555:root from an unfamiliar client",
+        "telemetry": "FULL"
+      },
+      "hardened": {
+        "outcome": "SUCCEEDED",
+        "detail": "used dev-svc key as arn:aws:iam::402528835445:root from an unfamiliar client",
+        "telemetry": "-"
+      },
+      "detected": false,
+      "mttd": null,
+      "alert": null,
+      "verdict": "NEITHER"
+    },
+    {
+      "id": "S09",
+      "name": "Privilege escalation via policy versions",
+      "technique": "T1098",
+      "tactic": "Privilege Escalation",
+      "purple": {
+        "outcome": "SUCCEEDED",
+        "detail": "added Action:* to arn:aws:iam::555555555555:policy/intern-policy (v3); post-escalation call to iam:ListUsers succeeded",
+        "telemetry": "PARTIAL"
+      },
+      "hardened": {
+        "outcome": "DENIED",
+        "detail": "User: arn:aws:iam::402528835445:user/intern is not authorized to perform: iam:CreatePolicyVersion on resource: arn:aws:iam::402528835445:policy/intern-policy because no identity-based policy allows the iam:CreatePolicyVersion action",
+        "prevented_by": "IAM policy",
+        "telemetry": "-"
+      },
+      "detected": false,
+      "mttd": null,
+      "alert": null,
+      "verdict": "PREVENTED"
+    },
+    {
+      "id": "S10",
+      "name": "Schedule KMS key deletion",
+      "technique": "T1485",
+      "tactic": "Impact",
+      "purple": {
+        "outcome": "SUCCEEDED",
+        "detail": "scheduled deletion of f038cd66-6dbf-4a44-9ff2-ebeca4cb33e5 in 7 days",
+        "telemetry": "FULL"
+      },
+      "hardened": {
+        "outcome": "SUCCEEDED",
+        "detail": "scheduled deletion of c7ea87e4-6cc2-44e6-8ec4-6dad1472bbc8 in 7 days",
+        "telemetry": "-"
+      },
+      "detected": false,
+      "mttd": null,
+      "alert": null,
+      "verdict": "NEITHER"
+    },
+    {
+      "id": "S11",
+      "name": "Harvest secrets",
+      "technique": "T1555.006",
+      "tactic": "Credential Access",
+      "purple": {
+        "outcome": "SUCCEEDED",
+        "detail": "read secret purple/db-password",
+        "telemetry": "FULL"
+      },
+      "hardened": {
+        "outcome": "SUCCEEDED",
+        "detail": "read secret hardened/db-password",
+        "telemetry": "-"
+      },
+      "detected": false,
+      "mttd": null,
+      "alert": null,
+      "verdict": "NEITHER"
+    },
+    {
+      "id": "S12",
+      "name": "Suspend versioning and delete objects",
+      "technique": "T1490",
+      "tactic": "Impact",
+      "purple": {
+        "outcome": "SUCCEEDED",
+        "detail": "suspended versioning and deleted 12 objects in purple-data-555555555555",
+        "telemetry": "FULL"
+      },
+      "hardened": {
+        "outcome": "SUCCEEDED",
+        "detail": "suspended versioning and deleted 12 objects in hardened-data-402528835445",
+        "telemetry": "-"
+      },
+      "detected": false,
+      "mttd": null,
+      "alert": null,
+      "verdict": "NEITHER"
+    }
+  ]
+}
