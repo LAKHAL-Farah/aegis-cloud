@@ -1,0 +1,3 @@
+{
+  "S08": "LocalStack records userAgent as console.amazonaws.com for every client, so a new-client signal never reaches CloudTrail (docs/evidence/telemetry-probe.md). Not detectable here; detectable on real AWS."
+}
