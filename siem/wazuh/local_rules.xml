@@ -97,7 +97,9 @@
     <mitre><id>T1555.006</id></mitre>
   </rule>
 
-  <!-- Bursts. Wazuh counts matching events per identity inside a time frame. -->
+  <!-- Bursts. Wazuh counts matching events per identity inside a time frame.
+       100199 is a silent helper: level 1 is below log_alert_level (3), so it never reaches alerts.json
+       and carries no MITRE id on purpose. Only the burst rule 100200 alerts. -->
   <rule id="100199" level="1">
     <if_sid>100100</if_sid>
     <field name="eventName">^GetObject$</field>

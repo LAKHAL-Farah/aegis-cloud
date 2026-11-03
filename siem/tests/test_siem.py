@@ -13,9 +13,18 @@ from wazuh_bridge import convert  # noqa: E402
 
 RULES = ROOT / "siem" / "wazuh" / "local_rules.xml"
 
+# Wazuh writes an alert to alerts.json only at level >= log_alert_level, which defaults to 3.
+# Rules below that are silent helpers (level 0 parents, the level-1 GetObject counter that the
+# burst rule 100200 aggregates). They need no MITRE id and no bridge entry.
+ALERT_LEVEL = 3
+
 
 def rules():
     return ET.parse(RULES).getroot().findall(".//rule")
+
+
+def alerting_rules():
+    return [r for r in rules() if int(r.get("level")) >= ALERT_LEVEL]
 
 
 def test_wazuh_rules_are_well_formed_xml_with_unique_ids_in_our_range():
@@ -25,9 +34,18 @@ def test_wazuh_rules_are_well_formed_xml_with_unique_ids_in_our_range():
 
 
 def test_every_alerting_rule_carries_a_mitre_technique():
+    assert alerting_rules()
+    for r in alerting_rules():
+        assert r.find("mitre/id") is not None, f"rule {r.get('id')} has no MITRE id"
+
+
+def test_silent_helper_rules_are_used_by_another_rule():
+    """A rule below the alert level never reaches alerts.json, so it only earns its place as a
+    parent or as a counted event. An unreferenced one is dead weight (or a rule someone forgot to raise)."""
+    referenced = {el.text for r in rules() for tag in ("if_sid", "if_matched_sid") for el in r.findall(tag)}
     for r in rules():
-        if int(r.get("level")) > 0:
-            assert r.find("mitre/id") is not None, f"rule {r.get('id')} has no MITRE id"
+        if int(r.get("level")) < ALERT_LEVEL:
+            assert r.get("id") in referenced, f"rule {r.get('id')} is silent and nothing uses it"
 
 
 def test_children_point_at_existing_parents():
@@ -99,6 +117,5 @@ def test_bridge_takes_the_technique_from_our_rules_even_when_wazuh_has_no_mitre_
 
 def test_every_alerting_rule_has_a_technique_in_the_bridge_table():
     import wazuh_bridge
-    for r in rules():
-        if int(r.get("level")) > 0:
-            assert r.get("id") in wazuh_bridge.TECHNIQUES
+    for r in alerting_rules():
+        assert r.get("id") in wazuh_bridge.TECHNIQUES, f"rule {r.get('id')} is missing from the bridge table"
