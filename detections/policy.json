@@ -1,0 +1,18 @@
+{
+  "_comment": "Environment facts the rules may use. Nothing here names a scenario, a run id or a test user agent (see tests/test_not_rigged.py).",
+  "trusted_accounts": [],
+  "service_identity_patterns": ["*-svc", "svc-*", "ci-*"],
+  "interactive_client_products": ["aws-cli", "mozilla", "awsconsole"],
+  "iam_policy_admins": ["root"],
+  "secret_readers": [],
+  "admin_ports": [22, 3389],
+  "thresholds": {
+    "discovery_min_calls": 4,
+    "discovery_min_services": 3,
+    "discovery_window_s": 60,
+    "getobject_burst": 10,
+    "getobject_window_s": 60,
+    "delete_burst": 5,
+    "delete_window_s": 60
+  }
+}
