@@ -1,0 +1,54 @@
+# Stage 3 SIEM stack. Separate from LocalStack on purpose: start only what the current step needs.
+#   make siem-up                 OpenSearch + Dashboards  (about 1.5 GB RAM)
+#   make siem-up PROFILE=wazuh   plus the Wazuh manager   (about 1 GB RAM more)
+# Security plugins are OFF: this is a single-user lab bound to localhost. Never expose these ports.
+name: aegis-siem
+
+services:
+  opensearch:
+    image: opensearchproject/opensearch:2.19.1        # verify the tag exists; keep it equal to the dashboards tag
+    container_name: aegis-opensearch
+    environment:
+      - discovery.type=single-node
+      - DISABLE_SECURITY_PLUGIN=true
+      - DISABLE_INSTALL_DEMO_CONFIG=true
+      - bootstrap.memory_lock=false
+      - OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m          # heap cap: the laptop also runs LocalStack
+    ulimits:
+      nofile: { soft: 65536, hard: 65536 }
+    ports:
+      - "127.0.0.1:9200:9200"
+    volumes:
+      - aegis-os-data:/usr/share/opensearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9200/_cluster/health >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+
+  dashboards:
+    image: opensearchproject/opensearch-dashboards:2.19.1
+    container_name: aegis-dashboards
+    environment:
+      - OPENSEARCH_HOSTS=["http://opensearch:9200"]
+      - DISABLE_SECURITY_DASHBOARDS_PLUGIN=true
+      - NODE_OPTIONS=--max-old-space-size=384
+    ports:
+      - "127.0.0.1:5601:5601"
+    depends_on:
+      opensearch:
+        condition: service_healthy
+
+  wazuh:
+    profiles: ["wazuh"]
+    image: wazuh/wazuh-manager:4.14.3                   # verify the tag on Docker Hub
+    container_name: aegis-wazuh
+    hostname: aegis-wazuh
+    volumes:
+      - ./siem/wazuh/ossec.conf:/wazuh-config-mount/etc/ossec.conf:ro
+      - ./siem/wazuh/local_rules.xml:/wazuh-config-mount/etc/rules/local_rules.xml:ro
+      - ./build/siem/events:/var/aegis/events:ro        # the detector's raw-event mirror (--mirror)
+    mem_limit: 1536m
+
+volumes:
+  aegis-os-data:
