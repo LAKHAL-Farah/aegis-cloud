@@ -51,4 +51,15 @@ attack's start time is the scenario's **MTTD**.
   files; the runner only reads.
 * Scenarios run **sequentially** with cleanup between each, so a detector almost never needs to
   disambiguate two concurrent attacks (the one documented exception is S02/S07, both `T1530`:
-  see `cloudpurple/tests/test_catalogue.py`).  
+  see `cloudpurple/tests/test_catalogue.py`).
+
+## Contract 1.1 (Stage 3)
+
+* New optional field **`event_time`** (ISO-8601 UTC): when the *evidence* event happened, as opposed to
+  `detected_at`, when the detector noticed. When present, the scorer also requires it to fall inside the
+  attack's own interval, which stops one scenario's alert being credited to another scenario with the same
+  ATT&CK technique (S02 and S07 are both T1530). Without it the Stage 2 rule applies unchanged.
+* Alerts are matched **after** the whole run plus a settle period (`--settle`, default 20 s), not 1 s after each
+  scenario. `--rescore LABEL` re-scores a saved run against the alerts now on disk.
+* `source` is used by `--alert-source` to score one detector at a time (`python-engine`, `wazuh`).
+* The baseline scorecard predates all of this. Its 0 alerts score identically under both matchers.

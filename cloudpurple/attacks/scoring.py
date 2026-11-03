@@ -23,7 +23,9 @@ def prevented_by(message: str) -> str:
         return "SCP"
     if "permissions boundary" in m or "permission boundary" in m:
         return "permission boundary"
-    if "explicit deny" in m or "no identity-based policy" in m:
+    if "no identity-based policy" in m:
+        return "IAM (boundary or policy)"   # LocalStack words boundary denials this way (docs/localstack-limitations.md)
+    if "explicit deny" in m:
         return "IAM policy"
     return "access denied (layer not named)"
 
@@ -72,6 +74,9 @@ def render_markdown(label: str, stamp: str, rows: list[dict], s: dict) -> str:
     out = [f"# CloudPurple scorecard: {label}", "", f"_Generated {stamp}_", "", f"**{headline(s)}**", ""]
     if s["mean_mttd"] is not None:
         out += [f"Mean time to detect: {s['mean_mttd']:.1f} s", ""]
+    if s.get("other_alerts"):
+        by_rule = ", ".join(f"{k} x{v}" for k, v in sorted(s.get("other_by_rule", {}).items()))
+        out += [f"Other alerts raised on purple during the run (not credited to a scenario): {s['other_alerts']} ({by_rule})", ""]
     out += ["| ID | ATT&CK | Scenario | Purple (vulnerable) | Hardened | Telemetry | Detected | MTTD | Verdict |",
             "| --- | --- | --- | --- | --- | --- | --- | --- | --- |"]
     for r in rows:

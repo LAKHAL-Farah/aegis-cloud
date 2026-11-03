@@ -7,3 +7,11 @@
 *.yaml text eol=lf
 Makefile text eol=lf
 *.mk   text eol=lf
+* text=auto
+*.sh text eol=lf
+*.txt text eol=lf
+*.jsonl text eol=lf
+*.xml text eol=lf
+*.mk text eol=lf
+*.py text eol=lf
+*.tf text eol=lf

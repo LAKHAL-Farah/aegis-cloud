@@ -51,8 +51,16 @@ def load_alerts(directory) -> list[dict]:
     return alerts
 
 
-def match_alert(alerts, technique: str, account_id: str, t0: datetime, window: int):
-    """First alert with the same technique + account inside [t0 - 1 s, t0 + window]. Returns (alert, mttd) or None."""
+def match_alert(alerts, technique: str, account_id: str, t0: datetime, window: int,
+                t_end: datetime | None = None, slop: float = 1.0, source: str | None = None):
+    """Earliest alert with the same technique + account whose detected_at is in [t0 - 1 s, t0 + window].
+
+    Stage 3 addition (contract 1.1): when the alert carries `event_time` (when the evidence event
+    happened) and the caller passes `t_end`, the evidence must also fall inside the attack's own
+    interval [t0 - slop, t_end + slop]. That is what stops one scenario's alert from being credited to
+    another scenario that shares its ATT&CK technique (S02 and S07 both map to T1530).
+    `source` restricts matching to one detector ("python-engine", "wazuh", ...).
+    Returns (alert, mttd) or None."""
     best = None
     for a in alerts:
         try:
@@ -61,7 +69,18 @@ def match_alert(alerts, technique: str, account_id: str, t0: datetime, window: i
             continue
         if a.get("technique") != technique or str(a.get("account_id")) != str(account_id):
             continue
+        if source and a.get("source") != source:
+            continue
         delta = (when - t0).total_seconds()
-        if -1 <= delta <= window and (best is None or delta < best[1]):
+        if not (-1 <= delta <= window):
+            continue
+        if t_end is not None and a.get("event_time"):
+            try:
+                evidence = _parse(a["event_time"])
+            except ValueError:
+                continue
+            if not (t0.timestamp() - slop <= evidence.timestamp() <= t_end.timestamp() + slop):
+                continue
+        if best is None or delta < best[1]:
             best = (a, max(delta, 0.0))
     return best

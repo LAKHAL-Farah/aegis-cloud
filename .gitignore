@@ -36,3 +36,6 @@ cloudpurple/terraform/hardened/hardened.auto.tfvars
 build/range/
 build/alerts/
 .pytest_cache/
+
+# --- AegisCloud Stage 3 ---
+siem/wazuh/ossec.conf

@@ -195,7 +195,7 @@ def s09_cleanup(ctx: Context):
 @scenario(
     id="S09", name="Privilege escalation via policy versions", technique="T1098", tactic="Privilege Escalation",
     description="As the low-privilege 'intern' user, add an admin statement to its own policy via CreatePolicyVersion.",
-    expected_events=("CreatePolicyVersion", "SetDefaultPolicyVersion"),
+    expected_events=("CreatePolicyVersion",),
     expected_detection="CreatePolicyVersion on a policy attached to the caller's own identity, followed by SetDefaultPolicyVersion.",
     cleanup=s09_cleanup,
 )

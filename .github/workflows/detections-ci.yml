@@ -1,0 +1,51 @@
+name: detections-ci
+
+on:
+  pull_request:
+    paths:
+      - "detections/**"
+      - "siem/**"
+      - "report/**"
+      - "docker-compose.siem.yml"
+      - "cloudpurple/attacks/**"
+      - "docs/detection-contract.md"
+  push:
+    branches: [main]
+    paths:
+      - "detections/**"
+      - "siem/**"
+      - "report/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: detections-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  engine:
+    name: rules, ASFF, replay, not-rigged (pytest, no LocalStack)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r detections/requirements.txt
+      - run: python3 -m pytest detections/tests -q
+      - run: python3 -m pytest cloudpurple/tests -q
+
+  siem-static:
+    name: Wazuh rules XML, bridge, report, compose config
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pytest
+      - run: python3 -m pytest siem/tests report/tests -q
+      - name: compose file parses
+        run: docker compose -f docker-compose.siem.yml --profile wazuh config -q

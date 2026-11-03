@@ -1,0 +1,4 @@
+{"attributes":{"timeFieldName":"event_time","title":"aegis-events-*"},"id":"aegis-events","migrationVersion":{"index-pattern":"7.6.0"},"references":[],"type":"index-pattern","updated_at":"2026-11-03T20:00:01.799Z","version":"WzIsMV0="}
+{"attributes":{"timeFieldName":"event_time","title":"aegis-findings-*"},"id":"aegis-findings","migrationVersion":{"index-pattern":"7.6.0"},"references":[],"type":"index-pattern","updated_at":"2026-11-03T20:00:01.204Z","version":"WzEsMV0="}
+{"attributes":{"timeFieldName":"attack_start","title":"aegis-scorecards*"},"id":"aegis-scorecards","migrationVersion":{"index-pattern":"7.6.0"},"references":[],"type":"index-pattern","updated_at":"2026-11-03T20:00:02.806Z","version":"WzMsMV0="}
+{"exportedCount":3,"missingRefCount":0,"missingReferences":[]}

@@ -1,0 +1,17 @@
+.venv/bin/python cloudpurple/posture.py
+
+== purple (555555555555): 0 of 6 posture checks pass
+  FAIL  data bucket blocks public access  [{'BlockPublicAcls': False, 'IgnorePublicAcls': False, 'BlockPublicPolicy': False, 'RestrictPublicBuckets': False}]
+  FAIL  service user has a permission boundary  [None]
+  FAIL  no security group open to the world on SSH  [['purple-legacy-open']]
+  FAIL  data key rotation enabled  [rotation=False]
+  FAIL  trail is multi-region with validation  [multi=False validation=False]
+  FAIL  instance requires IMDSv2  [HttpTokens=optional]
+
+== hardened (844227338124): 6 of 6 posture checks pass
+  PASS  data bucket blocks public access  [{'BlockPublicAcls': True, 'IgnorePublicAcls': True, 'BlockPublicPolicy': True, 'RestrictPublicBuckets': True}]
+  PASS  service user has a permission boundary  [{'PermissionsBoundaryType': 'Policy', 'PermissionsBoundaryArn': 'arn:aws:iam::844227338124:policy/aegis-permission-boundary'}]
+  PASS  no security group open to the world on SSH  [none]
+  PASS  data key rotation enabled  [rotation=True]
+  PASS  trail is multi-region with validation  [multi=True validation=True]
+  PASS  instance requires IMDSv2  [HttpTokens=required]

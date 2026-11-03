@@ -1,0 +1,115 @@
+<!-- AegisCloud custom Wazuh rules (rules as code). Ids 100100-100299 are reserved for this project.
+     Input: raw CloudTrail records, one JSON object per line (the detector mirror output).
+     Wazuh handles the single-event and simple-burst techniques. Correlation and enrichment
+     (S01 discovery, S08 client policy) stay in the Python engine: see docs/adr/0011. -->
+<group name="aegis,cloudtrail,">
+
+  <!-- 100100: every CloudTrail record. Level 0 = never alerts, only a parent for the rules below. -->
+  <rule id="100100" level="0">
+    <decoded_as>json</decoded_as>
+    <field name="eventSource">amazonaws\.com$</field>
+    <description>AegisCloud: CloudTrail record</description>
+  </rule>
+
+  <!-- Defense Evasion: T1562.008 -->
+  <rule id="100110" level="14">
+    <if_sid>100100</if_sid>
+    <field name="eventName">^StopLogging$|^DeleteTrail$</field>
+    <description>AegisCloud: CloudTrail logging stopped or trail deleted</description>
+    <mitre><id>T1562.008</id></mitre>
+  </rule>
+  <rule id="100111" level="12">
+    <if_sid>100100</if_sid>
+    <field name="eventName">^UpdateTrail$|^PutEventSelectors$|^PutInsightSelectors$</field>
+    <description>AegisCloud: CloudTrail configuration weakened</description>
+    <mitre><id>T1562.008</id></mitre>
+  </rule>
+
+  <!-- Persistence: T1136.003 -->
+  <rule id="100120" level="12">
+    <if_sid>100100</if_sid>
+    <field name="eventName">^CreateUser$</field>
+    <description>AegisCloud: IAM user created (denied attempts alert too)</description>
+    <mitre><id>T1136.003</id></mitre>
+  </rule>
+
+  <!-- Defense Evasion: T1562.007 (the 0.0.0.0/0 test is a plain text match on the whole record) -->
+  <rule id="100130" level="12">
+    <if_sid>100100</if_sid>
+    <field name="eventName">^AuthorizeSecurityGroupIngress$</field>
+    <match>0.0.0.0/0|::/0</match>
+    <description>AegisCloud: security group ingress opened to the internet</description>
+    <mitre><id>T1562.007</id></mitre>
+  </rule>
+
+  <!-- Exfiltration: T1537. Coarse: every bucket policy change is reviewed (the Python rule checks the principal). -->
+  <rule id="100140" level="10">
+    <if_sid>100100</if_sid>
+    <field name="eventName">^PutBucketPolicy$</field>
+    <description>AegisCloud: bucket policy changed</description>
+    <mitre><id>T1537</id></mitre>
+  </rule>
+
+  <!-- Collection: T1530 -->
+  <rule id="100150" level="12">
+    <if_sid>100100</if_sid>
+    <field name="eventName">^PutBucketAcl$</field>
+    <match>AllUsers|AuthenticatedUsers|public-read</match>
+    <description>AegisCloud: bucket ACL grants public access</description>
+    <mitre><id>T1530</id></mitre>
+  </rule>
+  <rule id="100151" level="12">
+    <if_sid>100100</if_sid>
+    <field name="eventName">^PutPublicAccessBlock$</field>
+    <regex type="pcre2">(?i)"block\w+"\s*:\s*false|"restrictpublicbuckets"\s*:\s*false|"ignorepublicacls"\s*:\s*false</regex>
+    <description>AegisCloud: Block Public Access relaxed</description>
+    <mitre><id>T1530</id></mitre>
+  </rule>
+
+  <!-- Privilege Escalation: T1098. Coarse: no allow-list of policy administrators here. -->
+  <rule id="100160" level="12">
+    <if_sid>100100</if_sid>
+    <field name="eventName">^CreatePolicyVersion$|^SetDefaultPolicyVersion$</field>
+    <description>AegisCloud: IAM policy version created or changed</description>
+    <mitre><id>T1098</id></mitre>
+  </rule>
+
+  <!-- Impact: T1485 and T1490 -->
+  <rule id="100170" level="14">
+    <if_sid>100100</if_sid>
+    <field name="eventName">^ScheduleKeyDeletion$</field>
+    <description>AegisCloud: KMS key scheduled for deletion</description>
+    <mitre><id>T1485</id></mitre>
+  </rule>
+  <rule id="100171" level="12">
+    <if_sid>100100</if_sid>
+    <field name="eventName">^PutBucketVersioning$</field>
+    <match>Suspended</match>
+    <description>AegisCloud: bucket versioning suspended</description>
+    <mitre><id>T1490</id></mitre>
+  </rule>
+
+  <!-- Credential Access: T1555.006 -->
+  <rule id="100180" level="8">
+    <if_sid>100100</if_sid>
+    <field name="eventName">^GetSecretValue$</field>
+    <description>AegisCloud: secret value read</description>
+    <mitre><id>T1555.006</id></mitre>
+  </rule>
+
+  <!-- Bursts. Wazuh counts matching events per identity inside a time frame.
+       100199 is a silent helper: level 1 is below log_alert_level (3), so it never reaches alerts.json
+       and carries no MITRE id on purpose. Only the burst rule 100200 alerts. -->
+  <rule id="100199" level="1">
+    <if_sid>100100</if_sid>
+    <field name="eventName">^GetObject$</field>
+    <description>AegisCloud: S3 GetObject data event</description>
+  </rule>
+  <rule id="100200" level="12" frequency="10" timeframe="60">
+    <if_matched_sid>100199</if_matched_sid>
+    <same_field>userIdentity.arn</same_field>
+    <description>AegisCloud: bulk S3 object download (10+ GetObject in 60 s by one identity)</description>
+    <mitre><id>T1530</id></mitre>
+  </rule>
+
+</group>
