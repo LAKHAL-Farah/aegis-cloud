@@ -1,10 +1,10 @@
-# Telemetry probe (2026-11-03 17:33 UTC)
+# Telemetry probe (2026-11-03 20:59 UTC)
 
 Purple account 555555555555. Recommended source: **s3**.
 
 | Question | Answer |
 | --- | --- |
-| Trail delivers real log files to S3 | yes (64 files, latency 7.8 s) |
+| Trail delivers real log files to S3 | yes (248 files, latency 14.4 s) |
 | `lookup_events` returns CreateUser / StopLogging / StartLogging / DeleteUser | yes / NO / NO / yes |
 | S3 delivery contains StopLogging / StartLogging | NO / NO |
 | S3 data events (GetObject) delivered | yes |
