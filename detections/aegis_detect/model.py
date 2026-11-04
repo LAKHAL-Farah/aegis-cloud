@@ -104,6 +104,7 @@ class Detection:
     evidence: list = field(default_factory=list)   # event ids
     source: str = "python-engine"
     detected_at: datetime | None = None            # stamped by the engine when it emits
+    access_key_id: str = ""                        # the key the evidence event was signed with, when the log has it
 
     @property
     def summary(self) -> str:

@@ -27,3 +27,13 @@ def test_alert_projection_matches_the_detection_contract():
     for k in ("technique", "account_id", "detected_at", "event_time", "source", "rule"):
         assert a[k]
     assert a["technique"] == "T1485" and a["account_id"] == ACCT
+
+def test_finding_carries_the_access_key_the_event_was_signed_with():
+    """Stage 4 revokes exactly this key. Absent when the log has none (the alert projection is unchanged)."""
+    f = to_asff(one())
+    assert f["ProductFields"]["aegis/access_key_id"] == "AKIAEXAMPLE"
+    assert "access_key_id" not in to_alert(one())
+    bare = rec("ScheduleKeyDeletion", "kms", req={"keyId": "k1"})
+    del bare["userIdentity"]["accessKeyId"]
+    d = Engine().process([Event.from_cloudtrail(bare, ACCT)])[0]
+    assert "aegis/access_key_id" not in to_asff(d)

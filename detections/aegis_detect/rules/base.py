@@ -60,7 +60,8 @@ class Rule:
             account_id=ev.account_id, principal=ev.principal,
             resource_type=resource_type or self.resource_type, resource_id=resource_id or ev.account_id,
             event_time=ev.time, event_id=ev.id, event_name=ev.name,
-            dedup_key=f"{self.id}|{dedup or ev.principal}", evidence=[e.id for e in evidence] or [ev.id])
+            dedup_key=f"{self.id}|{dedup or ev.principal}", evidence=[e.id for e in evidence] or [ev.id],
+            access_key_id=str((ev.raw.get("userIdentity") or {}).get("accessKeyId") or ""))
 
 
 def register(cls):
