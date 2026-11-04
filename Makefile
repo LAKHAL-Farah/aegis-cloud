@@ -106,3 +106,4 @@ drift:  ## nightly-style drift check on all roots
 > bash scripts/drift_check.sh
 -include cloudpurple/range.mk
 -include detections/detect.mk
+-include response/response.mk
