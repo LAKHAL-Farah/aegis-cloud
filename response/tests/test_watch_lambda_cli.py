@@ -183,3 +183,50 @@ def test_lambda_package_is_deterministic_and_complete(tmp_path):
     names = set(zipfile.ZipFile(tmp_path / "0" / "aegis-respond.zip").namelist())
     assert {"policy.json", "aegis_respond/lambda_handler.py", "aegis_respond/engine.py"} <= names
     assert not any("__pycache__" in n or n.startswith("tests") for n in names)
+
+
+def test_prompt_answers_a_pending_file_approval(tmp_path):
+    (tmp_path / "approvals").mkdir()
+    (tmp_path / "approvals" / "abc123.request.json").write_text(json.dumps(
+        {"incident_id": "abc123", "severity": "high", "title": "Bucket exposed", "plan": ["Block public access"]}))
+    r = subprocess.run([sys.executable, str(ROOT / "respond.py"), "--state-dir", str(tmp_path), "prompt", "--once"],
+                       input="y\n", capture_output=True, text=True, timeout=30)
+    assert r.returncode == 0 and "Block public access" in r.stdout and "approved" in r.stdout
+    assert (tmp_path / "approvals" / "abc123.decision").read_text().startswith("approve ")
+
+
+def test_prompt_treats_anything_but_y_as_a_denial(tmp_path):
+    (tmp_path / "approvals").mkdir()
+    (tmp_path / "approvals" / "abc123.request.json").write_text(json.dumps(
+        {"incident_id": "abc123", "severity": "high", "title": "t", "plan": ["p"]}))
+    subprocess.run([sys.executable, str(ROOT / "respond.py"), "--state-dir", str(tmp_path), "prompt", "--once"],
+                   input="maybe\n", capture_output=True, text=True, timeout=30)
+    assert (tmp_path / "approvals" / "abc123.decision").read_text().startswith("deny ")
+
+
+def test_prompt_exits_cleanly_when_stdin_closes(tmp_path):
+    (tmp_path / "approvals").mkdir()
+    (tmp_path / "approvals" / "abc123.request.json").write_text(json.dumps(
+        {"incident_id": "abc123", "severity": "low", "title": "t", "plan": ["p"]}))
+    r = subprocess.run([sys.executable, str(ROOT / "respond.py"), "--state-dir", str(tmp_path), "prompt"],
+                       input="", capture_output=True, text=True, timeout=30)
+    assert r.returncode == 1 and not (tmp_path / "approvals" / "abc123.decision").exists()    # no answer is not an approval
+
+
+def test_config_builds_the_slack_approver_and_notifier_from_the_environment(tmp_path):
+    from aegis_respond.approval import SlackApprover
+    from aegis_respond.config import build_approver, build_notifier
+    env = {"SLACK_BOT_TOKEN": "xoxb-1", "SLACK_CHANNEL": "C1", "SLACK_ALLOWED_USER_IDS": "U1, U2"}
+    ap = build_approver("slack", tmp_path, env)
+    assert isinstance(ap, SlackApprover) and ap.allowed == {"U1", "U2"} and ap.channel == "C1"
+    assert [n.name for n in build_notifier(env).notifiers] == ["stdout", "slack"]
+    assert [n.name for n in build_notifier({"SLACK_WEBHOOK_URL": "https://hooks.example/x"}).notifiers] == ["stdout", "slack"]
+    for missing in ({}, {"SLACK_BOT_TOKEN": "x", "SLACK_CHANNEL": "C1"}):       # no allow list: refuse, do not guess one
+        with pytest.raises(SystemExit, match="SLACK_"):
+            build_approver("slack", tmp_path, missing)
+
+
+def test_no_telegram_left_anywhere_in_the_response_layer():
+    hits = [p.name for p in list((ROOT / "aegis_respond").rglob("*.py")) + [ROOT / "respond.py", ROOT / "response.mk", ROOT / "policy.json"]
+            if "telegram" in p.read_text().lower()]
+    assert not hits, hits

@@ -49,7 +49,7 @@ def test_summary_and_headline_label_simulated_approval():
     assert "1 of 2" in h and "simulated approval" in h
     md = measure.render_markdown("l", "now", rows, s, "auto")
     assert "approval in this run was automated" in md and "NO_RESPONSE" in md
-    assert "real person" in measure.headline(s, "telegram")
+    assert "real person" in measure.headline(s, "slack")
 
 
 def test_empty_summary_does_not_divide_by_zero():

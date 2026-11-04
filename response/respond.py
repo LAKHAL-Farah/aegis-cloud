@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """AegisCloud responder CLI.
 
-  respond.py watch   [--execute] [--approver file|telegram|auto]    follow build/findings and respond
+  respond.py watch   [--execute] [--approver file|slack|auto]       follow build/findings and respond
   respond.py handle  FINDING.json [--execute] [--approver ...]       one finding
   respond.py pending                                                 approvals waiting for a person
-  respond.py approve ID | deny ID                                    answer a file approval
+  respond.py prompt  [--once]                                        answer file approvals here, y/N
+  respond.py approve ID | deny ID                                    answer a file approval (another terminal)
   respond.py audit   [--incident ID]                                 show the trail and verify its chain
   respond.py rollback ID                                             re-activate keys this incident deactivated
 
@@ -18,6 +19,7 @@ import json
 import os
 import sys
 import threading
+import time
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -47,6 +49,29 @@ def make_responder(args) -> Responder:
                      audit=audit, ledger=Ledger(state / "ledger.json"), endpoint=endpoint, execute=args.execute)
 
 
+def prompt_loop(state: Path, once: bool = False, who: str | None = None, input_fn=input, sleep=time.sleep) -> int:
+    """Show each pending file approval and ask y/N here, so the demo needs one window and no copied ids."""
+    approvals, who = state / "approvals", who or getpass.getuser()
+    print(f"waiting for approval requests in {approvals}  (Ctrl-C to stop)", flush=True)
+    while True:
+        pending = FileApprover.pending(approvals)
+        if pending:
+            p = pending[0]
+            print(f"\n{p['severity'].upper()}: {p['title']}\n" + "\n".join(f"  - {s}" for s in p["plan"]))
+            try:
+                answer = input_fn(f"Approve {p['incident_id']}? [y/N] ")
+            except EOFError:
+                return 1
+            try:
+                FileApprover.decide(approvals, p["incident_id"], answer.strip().lower() == "y", who)
+                print("approved" if answer.strip().lower() == "y" else "denied", flush=True)
+            except FileNotFoundError:
+                print("that request expired while you were deciding: nothing was changed", flush=True)
+            if once:
+                return 0
+        sleep(0.4)
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--state-dir", default=str(STATE))
@@ -56,7 +81,7 @@ def main() -> int:
 
     def common(p):
         p.add_argument("--execute", action="store_true", help="act (after approval). Without it: plan only")
-        p.add_argument("--approver", choices=["file", "telegram", "auto"], default="file")
+        p.add_argument("--approver", choices=["file", "slack", "auto"], default="file")
 
     w = sub.add_parser("watch")
     common(w)
@@ -66,6 +91,8 @@ def main() -> int:
     common(h)
     h.add_argument("finding")
     sub.add_parser("pending")
+    pr = sub.add_parser("prompt")
+    pr.add_argument("--once", action="store_true", help="exit after one answer")
     for name in ("approve", "deny"):
         sub.add_parser(name).add_argument("incident")
     a = sub.add_parser("audit")
@@ -81,6 +108,11 @@ def main() -> int:
         for p in FileApprover.pending(state / "approvals"):
             print(f"{p['incident_id']}  {p['severity']:8} {p['title']}\n" + "\n".join(f"    - {s}" for s in p["plan"]))
         return 0
+    if args.cmd == "prompt":
+        try:
+            return prompt_loop(state, args.once)
+        except KeyboardInterrupt:
+            return 0
     if args.cmd in ("approve", "deny"):
         try:
             FileApprover.decide(state / "approvals", args.incident, args.cmd == "approve", getpass.getuser())

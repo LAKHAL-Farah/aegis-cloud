@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Build the Lambda deployment package: aegis_respond/ + policy.json at the zip root. boto3 comes from the runtime.
-#   handler: aegis_respond.lambda_handler.handler     env: AEG_APPROVAL_HMAC_KEY (required), TELEGRAM_*, SLACK_WEBHOOK_URL
+#   handler: aegis_respond.lambda_handler.handler     env: AEG_APPROVAL_HMAC_KEY (required), SLACK_BOT_TOKEN, SLACK_CHANNEL (or SLACK_WEBHOOK_URL)
 # Needs only python3 (no `zip` binary). The archive is deterministic: sorted names, fixed timestamps and modes,
 # so the same source always gives the same sha256. Stage 7 signs it with Cosign; this hash is what gets attested.
 set -euo pipefail

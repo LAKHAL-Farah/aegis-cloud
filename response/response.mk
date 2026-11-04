@@ -3,8 +3,9 @@ RESP_DIR := response
 RESP_STATE := build/response
 ENDPOINT ?= http://localhost:4566
 APPROVER ?= file
+MEASURE_APPROVER ?= auto
 
-.PHONY: response-install response-test respond-plan respond-up respond-down respond-log respond-pending \
+.PHONY: response-install response-test respond-plan respond-up respond-down respond-log respond-pending respond-prompt \
         respond-approve respond-deny respond-audit respond-rollback stage4-run lambda-package
 
 response-install:  ## install response dependencies into the venv
@@ -16,7 +17,7 @@ response-test:  ## playbook, approval, audit and Lambda tests (moto, no LocalSta
 respond-plan:  ## DRY RUN in the foreground: plans and notifies, changes nothing
 > $(PY) $(RESP_DIR)/respond.py --endpoint $(ENDPOINT) watch
 
-respond-up:  ## run the responder in the background and ACT after approval (APPROVER=file|telegram)
+respond-up:  ## run the responder in the background and ACT after approval (APPROVER=file|slack)
 > mkdir -p $(RESP_STATE)
 > nohup $(PY) $(RESP_DIR)/respond.py --endpoint $(ENDPOINT) watch --execute --approver $(APPROVER) > $(RESP_STATE)/responder.log 2>&1 & echo $$! > $(RESP_STATE)/responder.pid
 > sleep 2
@@ -30,6 +31,9 @@ respond-log:  ## show the responder log
 
 respond-pending:  ## approvals waiting for a person (file approver)
 > $(PY) $(RESP_DIR)/respond.py pending
+
+respond-prompt:  ## answer file approvals in this terminal (y/N). STATE=build/response/measure-<label> for a measured run
+> $(PY) $(RESP_DIR)/respond.py $(if $(STATE),--state-dir $(STATE),) prompt
 
 respond-approve:  ## approve a pending action: make respond-approve ID=<incident id>
 > test -n "$(ID)" || { echo "usage: make respond-approve ID=<incident id from make respond-pending>"; exit 1; }
@@ -46,12 +50,12 @@ respond-rollback:  ## re-activate the keys an incident deactivated: make respond
 > test -n "$(ID)" || { echo "usage: make respond-rollback ID=<incident id>"; exit 1; }
 > $(PY) $(RESP_DIR)/respond.py --endpoint $(ENDPOINT) rollback $(ID)
 
-stage4-run:  ## the measured run: detector up, attack, respond, verify, scorecard. LABEL=stage4-v1 [APPROVER=auto|telegram]
+stage4-run:  ## the measured run: detector up, attack, respond, verify, scorecard. LABEL=stage4-v1 [MEASURE_APPROVER=auto|file|slack]
 > test -n "$(LABEL)" || { echo "usage: make stage4-run LABEL=stage4-v1"; exit 1; }
 > $(MAKE) --no-print-directory detect-down
 > rm -rf build/findings; mkdir -p build/alerts build/findings
 > $(MAKE) --no-print-directory detect-up
-> $(PY) $(RESP_DIR)/tools/measure.py --label $(LABEL) --approver $(if $(filter file,$(APPROVER)),auto,$(APPROVER)) --endpoint $(ENDPOINT) || { $(MAKE) --no-print-directory detect-down; exit 1; }
+> $(PY) $(RESP_DIR)/tools/measure.py --label $(LABEL) --approver $(MEASURE_APPROVER) --endpoint $(ENDPOINT) || { $(MAKE) --no-print-directory detect-down; exit 1; }
 > $(MAKE) --no-print-directory detect-down
 
 lambda-package:  ## build build/lambda/aegis-respond.zip and print its sha256

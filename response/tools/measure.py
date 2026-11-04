@@ -10,7 +10,7 @@ restores the range. It writes docs/evidence/scorecards/<label>.json and .md.
 
 Honesty switches
 * --approver auto  approves instantly and the scorecard says "simulated approval". That measures the machines.
-* --approver telegram|file  includes a real person's reaction time. `machine_s` always excludes it.
+* --approver file|slack  includes a real person's reaction time. `machine_s` always excludes it.
 * Only the purple twin is touched. The hardened twin exists to prevent, not to be remediated.
 """
 from __future__ import annotations
@@ -125,7 +125,7 @@ def render_markdown(label: str, stamp: str, rows: list[dict], s: dict, approver:
     out = [f"# Response scorecard: {label}", "", f"_Generated {stamp}_", "", f"**{headline(s, approver)}**", ""]
     if approver == "auto":
         out += ["> The approval in this run was automated. The time to respond here is what the machines need; a person "
-                "tapping Approve adds their own reaction time (see `human_wait_s` in a Telegram run).", ""]
+                "approving adds their own reaction time (see `human_wait_s` in a file or Slack run).", ""]
     out += ["| Playbook | Scenario | ATT&CK | Detected by | MTTD | Approval wait | Detected to contained | Attack to contained | Status | State verified |",
             "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |"]
     f = lambda v: "-" if v is None else f"{v:.1f} s"  # noqa: E731
@@ -145,7 +145,7 @@ def render_markdown(label: str, stamp: str, rows: list[dict], s: dict, approver:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--label", required=True)
-    ap.add_argument("--approver", choices=["auto", "file", "telegram"], default="auto")
+    ap.add_argument("--approver", choices=["auto", "file", "slack"], default="auto")
     ap.add_argument("--only", help="comma-separated playbook ids")
     ap.add_argument("--timeout", type=int, default=150, help="seconds to wait for a response per pair")
     ap.add_argument("--endpoint", default="http://localhost:4566")

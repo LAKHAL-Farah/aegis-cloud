@@ -1,5 +1,5 @@
 import pytest
-from rsupport import Approve, AuditLog, FakeTelegram, Ledger, Recorder, ResponsePolicy, Responder, cloudtrail, findings_for
+from rsupport import Approve, AuditLog, FakeSlack, Ledger, Recorder, ResponsePolicy, Responder, cloudtrail, findings_for
 
 
 @pytest.fixture
@@ -27,7 +27,7 @@ def make_responder(tmp_path):
 
 
 @pytest.fixture
-def telegram():
-    t = FakeTelegram()
+def slack():
+    t = FakeSlack()
     yield t
     t.close()
