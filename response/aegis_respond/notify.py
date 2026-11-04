@@ -5,7 +5,7 @@ import json
 import urllib.request
 from typing import Protocol
 
-from .approval import TelegramAPI
+from .approval import SlackAPI
 
 
 class Notifier(Protocol):
@@ -21,18 +21,19 @@ class StdoutNotifier:
         print(text, flush=True)
 
 
-class TelegramNotifier:
-    name = "telegram"
+class SlackBotNotifier:
+    """Posts to a channel with the same bot token the approver uses (chat:write scope)."""
+    name = "slack"
 
-    def __init__(self, api: TelegramAPI, chat_id: int | str):
-        self.api, self.chat_id = api, chat_id
+    def __init__(self, api: SlackAPI, channel: str):
+        self.api, self.channel = api, channel
 
     def send(self, text: str, payload: dict | None = None) -> None:
-        self.api.call("sendMessage", {"chat_id": self.chat_id, "text": text})
+        self.api.call("chat.postMessage", {"channel": self.channel, "text": text})
 
 
 class SlackNotifier:
-    """Incoming-webhook notifications only. Slack buttons need a public endpoint, so approval stays in Telegram/file."""
+    """Incoming-webhook notifications only (no bot token needed). Approval is SlackApprover's job."""
     name = "slack"
 
     def __init__(self, webhook_url: str):

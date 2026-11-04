@@ -2,7 +2,7 @@ import threading
 import time
 
 import pytest
-from aegis_respond.approval import (AutoApprover, FileApprover, TelegramAPI, TelegramApprover, sign_approval, verify_approval)
+from aegis_respond.approval import AutoApprover, FileApprover, SlackAPI, SlackApprover, sign_approval, verify_approval
 from aegis_respond.incident import Incident
 
 
@@ -73,57 +73,90 @@ def test_stale_decision_file_cannot_pre_approve(tmp_path, inc):
     assert not d.approved                      # the leftover file was cleared before the request was published
 
 
-# ---- Telegram
-def approver(telegram, allowed=(1,), poll=1):
-    return TelegramApprover(TelegramAPI("123:SECRET", telegram.base), chat_id=555, allowed_user_ids=list(allowed), poll_s=poll)
+# ---- Slack (reactions, polled outward: no public URL)
+ALLOWED = ["U0FARAH"]
 
 
-def tap_on_send(telegram, answer="y", **kw):
-    def hook(body):
-        data = body["reply_markup"]["inline_keyboard"][0][0]["callback_data"]
-        telegram.tap(data.rsplit(":", 1)[0] + f":{answer}", **kw)
-    telegram.on_send = hook
+def approver(slack, allowed=tuple(ALLOWED), poll=0.02):
+    return SlackApprover(SlackAPI("xoxb-SECRET-TOKEN", slack.base), "C0TEST", list(allowed), poll_s=poll)
 
 
-def test_telegram_approve_by_allowed_user(telegram, inc):
-    tap_on_send(telegram, "y", user_id=1, username="farah")
-    d = approver(telegram).request(inc, ["Deactivate key"], 10)
-    assert d.approved and d.by == "telegram:farah"
-    msg = telegram.sent()[0]["text"]
-    assert "Deactivate key" in msg and inc.title in msg
-    assert any(m == "answerCallbackQuery" for m, _ in telegram.calls)
-    assert any(m == "editMessageReplyMarkup" for m, _ in telegram.calls)     # buttons removed after the tap
+def react_on_post(slack, name, users):
+    slack.on_post = lambda ts: slack.react(name, users, ts)
 
 
-def test_telegram_deny(telegram, inc):
-    tap_on_send(telegram, "n")
-    d = approver(telegram).request(inc, ["x"], 10)
-    assert not d.approved and "denied" in d.reason
+def test_slack_approve_by_an_allowed_user(slack, inc):
+    react_on_post(slack, "white_check_mark", ["U0FARAH"])
+    d = approver(slack).request(inc, ["Deactivate key"], 5)
+    assert d.approved and d.by == "slack:U0FARAH" and not d.automated
+    text = slack.messages[0]["text"]
+    assert "Deactivate key" in text and inc.title in text and "<@U0FARAH>" in text and ":white_check_mark:" in text
+    assert "Approved by <@U0FARAH>" in slack.replies[0]["text"] and slack.replies[0]["thread_ts"] == slack.messages[0]["ts"]
 
 
-def test_telegram_ignores_strangers_then_times_out(telegram, inc):
-    tap_on_send(telegram, "y", user_id=999)
-    t0 = time.monotonic()
-    d = approver(telegram, poll=1).request(inc, ["x"], 2)
-    assert not d.approved and d.by == "timeout" and time.monotonic() - t0 < 6
+def test_slack_deny_by_an_allowed_user(slack, inc):
+    react_on_post(slack, "x", ["U0FARAH"])
+    d = approver(slack).request(inc, ["x"], 5)
+    assert not d.approved and d.by == "slack:U0FARAH" and "denied" in d.reason
 
 
-def test_telegram_ignores_a_stale_button_from_an_earlier_request(telegram, inc):
-    telegram.tap(f"aegis:{inc.short}:deadbeef:y", user_id=1)              # tapped before, for an old nonce
-    d = approver(telegram, poll=1).request(inc, ["x"], 2)
-    assert not d.approved and d.by == "timeout"
+def test_slack_deny_beats_approve(slack, inc):
+    def both(ts):
+        slack.react("white_check_mark", ["U0FARAH"], ts)
+        slack.react("x", ["U0FARAH"], ts)
+    slack.on_post = both
+    assert not approver(slack).request(inc, ["x"], 5).approved
 
 
-def test_telegram_needs_an_allow_list():
+def test_slack_ignores_reactions_from_people_who_are_not_allowed(slack, inc):
+    react_on_post(slack, "white_check_mark", ["U0STRANGER"])
+    d = approver(slack).request(inc, ["x"], 0.4)
+    assert not d.approved and d.by == "timeout" and "No decision" in slack.replies[0]["text"]
+
+
+def test_slack_ignores_a_reaction_on_some_other_message(slack, inc):
+    slack.messages.append({"ts": "0.1", "text": "an older approval", "reactions": []})
+    slack.react("white_check_mark", ["U0FARAH"], "0.1")                       # approving yesterday's message
+    assert not approver(slack).request(inc, ["x"], 0.4).approved
+
+
+def test_slack_handles_skin_tone_suffixes_and_unrelated_emoji(slack, inc):
+    def reacts(ts):
+        slack.react("eyes", ["U0FARAH"], ts)
+        slack.react("white_check_mark::skin-tone-3", ["U0FARAH"], ts)
+    slack.on_post = reacts
+    assert approver(slack).request(inc, ["x"], 5).approved
+
+
+def test_slack_survives_a_rate_limit_while_polling(slack, inc):
+    slack.fail_reactions = 2
+    react_on_post(slack, "white_check_mark", ["U0FARAH"])
+    assert approver(slack).request(inc, ["x"], 5).approved
+
+
+def test_slack_refusal_on_post_raises_so_the_engine_denies(slack, inc):
+    slack.refuse = "channel_not_found"
+    with pytest.raises(RuntimeError, match="channel_not_found"):
+        approver(slack).request(inc, ["x"], 1)
+
+
+def test_slack_needs_an_allow_list():
     with pytest.raises(ValueError):
-        TelegramApprover(TelegramAPI("t"), 1, [])
+        SlackApprover(SlackAPI("t"), "C1", [])
+    with pytest.raises(ValueError):
+        SlackApprover(SlackAPI("t"), "C1", ["", "  "])
 
 
-def test_telegram_errors_never_leak_the_bot_token():
-    api = TelegramAPI("123:TOPSECRET", "http://127.0.0.1:9")             # nothing listens there
+def test_slack_token_is_sent_as_a_header_and_never_leaks(slack, inc):
+    react_on_post(slack, "white_check_mark", ["U0FARAH"])
+    api = SlackAPI("xoxb-SECRET-TOKEN", slack.base)
+    approver(slack).request(inc, ["x"], 5)
+    assert set(slack.auth) == {"Bearer xoxb-SECRET-TOKEN"}
+    assert "xoxb-SECRET" not in repr(api) and all("xoxb" not in str(f) for _, f in slack.calls)
+    dead = SlackAPI("xoxb-SECRET-TOKEN", "http://127.0.0.1:9")               # nothing listens there
     with pytest.raises(RuntimeError) as e:
-        api.call("sendMessage", {}, timeout=1)
-    assert "TOPSECRET" not in str(e.value) and "TOPSECRET" not in repr(e.value.__cause__)
+        dead.call("chat.postMessage", {}, timeout=1)
+    assert "xoxb" not in str(e.value) and "xoxb" not in repr(e.value.__cause__)
 
 
 # ---- signed approvals (Lambda path)

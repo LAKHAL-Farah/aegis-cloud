@@ -68,7 +68,7 @@ def test_a_crashing_approval_channel_fails_closed(aws, make_responder, secret_fi
         name = "broken"
 
         def request(self, *a):
-            raise RuntimeError("telegram down")
+            raise RuntimeError("slack down")
     out = make_responder(approver=Broken()).handle(secret_finding)
     assert out.status == DENIED and "approval channel failed" in out.detail and len(active_keys(aws)) == 1
 
@@ -217,3 +217,35 @@ def test_bucket_flow_end_to_end(aws, make_responder, public_bucket_finding):
     out = make_responder().handle(public_bucket_finding)
     assert out.status == CONTAINED and out.playbook == "public_bucket"
     assert s3.get_public_access_block(Bucket="data-bucket")["PublicAccessBlockConfiguration"] == ALL_ON
+
+
+def slack_responder(make_responder, slack, users):
+    from aegis_respond.approval import SlackAPI, SlackApprover
+    return make_responder(approver=SlackApprover(SlackAPI("xoxb-t", slack.base), "C0TEST", ["U0FARAH"], poll_s=0.02))
+
+
+def test_a_slack_reaction_approves_and_the_key_is_contained(aws, make_responder, secret_finding, slack):
+    slack.on_post = lambda ts: slack.react("white_check_mark", ["U0FARAH"], ts)
+    out = slack_responder(make_responder, slack, ["U0FARAH"]).handle(secret_finding)
+    assert out.status == CONTAINED and out.decision.by == "slack:U0FARAH" and not out.decision.automated
+    assert len(active_keys(aws)) == 1 and "Approved by" in slack.replies[0]["text"]
+
+
+def test_a_slack_x_reaction_changes_nothing(aws, make_responder, secret_finding, slack):
+    slack.on_post = lambda ts: slack.react("x", ["U0FARAH"], ts)
+    before = [k["AccessKeyId"] for k in active_keys(aws)]
+    out = slack_responder(make_responder, slack, ["U0FARAH"]).handle(secret_finding)
+    assert out.status == DENIED and [k["AccessKeyId"] for k in active_keys(aws)] == before
+
+
+def test_slack_being_down_is_a_denial_not_an_approval(aws, make_responder, secret_finding, slack):
+    slack.refuse = "invalid_auth"
+    out = slack_responder(make_responder, slack, ["U0FARAH"]).handle(secret_finding)
+    assert out.status == DENIED and "approval channel failed" in out.detail and len(active_keys(aws)) == 1
+
+
+def test_the_slack_bot_notifier_posts_to_the_channel(slack):
+    from aegis_respond.approval import SlackAPI
+    from aegis_respond.notify import SlackBotNotifier
+    SlackBotNotifier(SlackAPI("xoxb-t", slack.base), "C0TEST").send("hello")
+    assert slack.calls[-1] == ("chat.postMessage", {"channel": "C0TEST", "text": "hello"})

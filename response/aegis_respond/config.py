@@ -4,21 +4,20 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from .approval import AutoApprover, FileApprover, TelegramAPI, TelegramApprover
-from .notify import Fanout, SlackNotifier, StdoutNotifier, TelegramNotifier, WebhookNotifier
+from .approval import AutoApprover, FileApprover, SlackAPI, SlackApprover
+from .notify import Fanout, SlackBotNotifier, SlackNotifier, StdoutNotifier, WebhookNotifier
 
 
-def telegram_api(env=os.environ) -> TelegramAPI | None:
-    return TelegramAPI(env["TELEGRAM_BOT_TOKEN"], env.get("TELEGRAM_API_BASE", "https://api.telegram.org")) \
-        if env.get("TELEGRAM_BOT_TOKEN") else None
+def slack_api(env=os.environ) -> SlackAPI | None:
+    return SlackAPI(env["SLACK_BOT_TOKEN"], env.get("SLACK_API_BASE", "https://slack.com/api")) if env.get("SLACK_BOT_TOKEN") else None
 
 
 def build_notifier(env=os.environ, on_error=None) -> Fanout:
     parts = [StdoutNotifier()]
-    api = telegram_api(env)
-    if api and env.get("TELEGRAM_CHAT_ID"):
-        parts.append(TelegramNotifier(api, env["TELEGRAM_CHAT_ID"]))
-    if env.get("SLACK_WEBHOOK_URL"):
+    api = slack_api(env)
+    if api and env.get("SLACK_CHANNEL"):
+        parts.append(SlackBotNotifier(api, env["SLACK_CHANNEL"]))
+    elif env.get("SLACK_WEBHOOK_URL"):
         parts.append(SlackNotifier(env["SLACK_WEBHOOK_URL"]))
     if env.get("AEGIS_WEBHOOK_URL"):
         parts.append(WebhookNotifier(env["AEGIS_WEBHOOK_URL"], env.get("AEGIS_WEBHOOK_BEARER")))
@@ -30,11 +29,10 @@ def build_approver(kind: str, state_dir: Path, env=os.environ, auto_delay_s: flo
         return AutoApprover(delay_s=auto_delay_s)
     if kind == "file":
         return FileApprover(Path(state_dir) / "approvals")
-    if kind == "telegram":
-        api = telegram_api(env)
-        chat = env.get("TELEGRAM_CHAT_ID")
-        if not api or not chat:
-            raise SystemExit("telegram approver needs TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID")
-        allowed = [int(x) for x in env.get("TELEGRAM_ALLOWED_USER_IDS", chat).split(",") if x.strip().lstrip("-").isdigit()]
-        return TelegramApprover(api, chat, allowed)
+    if kind == "slack":
+        api = slack_api(env)
+        missing = [k for k in ("SLACK_BOT_TOKEN", "SLACK_CHANNEL", "SLACK_ALLOWED_USER_IDS") if not env.get(k)]
+        if missing:
+            raise SystemExit("slack approver needs " + ", ".join(missing) + " (see docs/response-playbooks.md)")
+        return SlackApprover(api, env["SLACK_CHANNEL"], env["SLACK_ALLOWED_USER_IDS"].split(","))
     raise SystemExit(f"unknown approver {kind!r}")

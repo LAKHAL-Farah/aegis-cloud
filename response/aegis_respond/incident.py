@@ -35,7 +35,7 @@ class Incident:
 
     @property
     def short(self) -> str:
-        """12 hex chars: safe in file names and Telegram callback data (64 byte limit)."""
+        """12 hex chars: safe in file names and chat messages."""
         return hashlib.sha256(self.id.encode()).hexdigest()[:12]
 
     @property

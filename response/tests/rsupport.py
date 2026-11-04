@@ -69,11 +69,12 @@ class Approve:
         return Decision(self.ok, self.by if self.ok else (self.by), "test decision", waited_s=self.waited)
 
 
-class FakeTelegram:
-    """A local stand-in for api.telegram.org: records calls, lets a test script what 'users' tap."""
+class FakeSlack:
+    """A local stand-in for slack.com/api: stores messages and reactions, lets a test script who reacts."""
 
     def __init__(self):
-        self.calls, self.updates, self.on_send, self._uid = [], [], None, 100
+        self.messages, self.replies, self.auth, self.calls = [], [], [], []
+        self.on_post, self.fail_reactions, self.refuse = None, 0, None
         outer = self
 
         class H(BaseHTTPRequestHandler):
@@ -81,18 +82,32 @@ class FakeTelegram:
                 pass
 
             def do_POST(self):
-                body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))) or b"{}")
+                from urllib.parse import parse_qs
+                form = {k: v[0] for k, v in parse_qs(self.rfile.read(int(self.headers.get("Content-Length", 0))).decode()).items()}
                 method = self.path.rsplit("/", 1)[-1]
-                outer.calls.append((method, body))
-                if method == "sendMessage" and outer.on_send:
-                    outer.on_send(body)
-                result = {"ok": True, "result": {}}
-                if method == "sendMessage":
-                    result["result"] = {"message_id": 7}
-                if method == "getUpdates":
-                    off = body.get("offset", 0)
-                    result["result"] = [u for u in outer.updates if u["update_id"] >= off]
-                payload = json.dumps(result).encode()
+                outer.auth.append(self.headers.get("Authorization"))
+                outer.calls.append((method, form))
+                if outer.refuse:
+                    out = {"ok": False, "error": outer.refuse}
+                elif method == "chat.postMessage" and "thread_ts" in form:
+                    outer.replies.append(form)
+                    out = {"ok": True, "channel": "C0TEST", "ts": "9.9"}
+                elif method == "chat.postMessage":
+                    ts = f"{len(outer.messages) + 1}.000100"
+                    outer.messages.append({"ts": ts, "text": form.get("text", ""), "reactions": []})
+                    if outer.on_post:
+                        outer.on_post(ts)
+                    out = {"ok": True, "channel": "C0TEST", "ts": ts}
+                elif method == "reactions.get":
+                    if outer.fail_reactions > 0:
+                        outer.fail_reactions -= 1
+                        out = {"ok": False, "error": "ratelimited"}
+                    else:
+                        msg = next((m for m in outer.messages if m["ts"] == form.get("timestamp")), None)
+                        out = {"ok": True, "message": {"reactions": msg["reactions"]}} if msg else {"ok": False, "error": "message_not_found"}
+                else:
+                    out = {"ok": False, "error": "unknown_method"}
+                payload = json.dumps(out).encode()
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json")
                 self.end_headers()
@@ -102,13 +117,9 @@ class FakeTelegram:
         self.base = f"http://127.0.0.1:{self.httpd.server_address[1]}"
         threading.Thread(target=self.httpd.serve_forever, daemon=True).start()
 
-    def tap(self, callback_data, user_id=1, username="farah"):
-        self._uid += 1
-        self.updates.append({"update_id": self._uid, "callback_query": {
-            "id": f"cb{self._uid}", "data": callback_data, "from": {"id": user_id, "username": username}}})
-
-    def sent(self):
-        return [b for m, b in self.calls if m == "sendMessage"]
+    def react(self, name, users, ts=None):
+        msg = next(m for m in self.messages if ts is None or m["ts"] == ts) if ts else self.messages[-1]
+        msg["reactions"].append({"name": name, "users": list(users), "count": len(users)})
 
     def close(self):
         self.httpd.shutdown()
