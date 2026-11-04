@@ -1,0 +1,19 @@
+{
+  "_comment": "Which findings trigger which playbook. Rules are matched by detection rule id. Nothing here names a scenario, a run id or a test account (see tests/test_not_rigged.py).",
+  "protected_identities": ["root", "aegis-*", "break-glass-*"],
+  "approval_timeout_s": 120,
+  "min_severity": "medium",
+  "cooldown_s": 300,
+  "playbooks": {
+    "leaked_key": {
+      "enabled": true,
+      "rules": ["AEG-ACCESS-001", "AEG-CRED-001", "AEG-EXFIL-003"],
+      "rotate": true,
+      "rotated_secret_prefix": "aegis/rotated-access-key"
+    },
+    "public_bucket": {
+      "enabled": true,
+      "rules": ["AEG-EXFIL-002"]
+    }
+  }
+}
