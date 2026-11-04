@@ -33,3 +33,14 @@ def test_known_limitation_replaces_the_generic_reason():
     after = card("a", [row("S08", "Initial Access", "T1078.004", False)], 0)
     md, _ = build(before, after, {"S08": "LocalStack overwrites the user agent"})
     assert "known limitation: LocalStack overwrites the user agent" in md and "investigate" not in md
+
+
+def test_excluded_scenarios_leave_the_denominator_but_stay_visible():
+    rows = [row("S01", "Discovery", "T1580", True, mttd=3.2), row("S08", "Initial Access", "T1078.004", False)]
+    known = {"S08": "LocalStack records one user agent (docs/evidence/telemetry-probe.md)"}
+    md, page = build(card("baseline", [row("S01", "Discovery", "T1580", False), row("S08", "Initial Access", "T1078.004", False)], 0),
+                     card("v5", rows, 1), known)
+    assert "**1 of 1**" in md and "0 of 1" in md                      # same exclusion on both sides
+    assert "2 scenarios run; S08 excluded" in md                        # the disclosure is in the table itself
+    assert "**EXCLUDED**" in md and "known limitation" in md            # S08 is still a row
+    assert "1 of 1 scorable detected (S08 excluded" in page

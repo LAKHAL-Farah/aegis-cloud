@@ -2,10 +2,12 @@
 
 | | baseline | stage3-v5 |
 | --- | --- | --- |
-| Detected | 0 of 12 | **11 of 12** |
+| Detected (scorable) | 0 of 11 | **11 of 11** |
 | Prevented on hardened twin | 3 of 12 | 3 of 12 |
 | Mean time to detect | - | 2.7 s |
 | Other alerts during the run | - | 11 |
+
+_12 scenarios run; S08 excluded from the denominator (LocalStack limitation, see docs/known-limits.json)._
 
 ## Per scenario
 
@@ -18,7 +20,7 @@
 | S05 | T1562.007 | Open a security group to the world | missed | **detected** | 1.7 s | AEG-EVAS-003 (python-engine) | - |
 | S06 | T1537 | Backdoor bucket policy | missed | **detected** | 1.5 s | AEG-EXFIL-001 (python-engine) | - |
 | S07 | T1530 | Make the data bucket public | missed | **detected** | 1.4 s | AEG-EXFIL-002 (python-engine) | - |
-| S08 | T1078.004 | Use a leaked access key | missed | **MISSED** | - | - | known limitation: LocalStack records userAgent as console.amazonaws.com for every client, so a new-client signal never reaches CloudTrail (docs/evidence/telemetry-probe.md). Not detectable here; detectable on real AWS. |
+| S08 | T1078.004 | Use a leaked access key | missed | **EXCLUDED** | - | - | known limitation: LocalStack records userAgent as console.amazonaws.com for every client, so a new-client signal never reaches CloudTrail (docs/evidence/telemetry-probe.md). Not detectable here; detectable on real AWS. |
 | S09 | T1098 | Privilege escalation via policy versions | missed | **detected** | 0.8 s | AEG-PRIV-001 (python-engine) | - |
 | S10 | T1485 | Schedule KMS key deletion | missed | **detected** | 0.6 s | AEG-IMPACT-001 (python-engine) | - |
 | S11 | T1555.006 | Harvest secrets | missed | **detected** | 0.4 s | AEG-CRED-001 (python-engine) | - |
