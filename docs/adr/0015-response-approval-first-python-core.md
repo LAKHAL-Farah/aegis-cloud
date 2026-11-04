@@ -1,11 +1,11 @@
 # ADR-0015: Response is approval-first, with a Python core and n8n as a consumer
 
-* Status: accepted
+* Status: accepted (point 3 amended by ADR-0016: Slack replaces Telegram)
 * Date: 2026-11-04
 
 ## Context
 Stage 4 needs finding -> approve -> contain -> verify, measured, demoable in 90 seconds, and runnable with no AWS
-account. The plan names n8n, Lambda, SSM, Telegram or Slack, and an audit trail. ADR-0005 already decided that
+account. The plan names n8n, Lambda, SSM, Telegram or Slack, and an audit trail. Telegram was chosen first and replaced by Slack in ADR-0016. ADR-0005 already decided that
 triggers come from our own detections, not from Config.
 
 ## Decision
@@ -14,10 +14,10 @@ triggers come from our own detections, not from Config.
 2. **A human approves before anything changes, and silence means no.** Approval timeout, a crashing channel, an
    unknown reply and an unsigned event are all denials. `plan()` is read-only. `contain()` receives the exact
    plan the human saw.
-3. **Telegram approves, Slack and n8n are told.** Telegram long-polling needs no inbound port and checks the
-   tapper's user id against an allow list and a per-request nonce. Slack buttons and n8n callbacks need a public
-   endpoint, which would be a second control path to defend, so Slack (webhook) and n8n (Webhook node) are
-   notified only. n8n can enrich, open tickets and page people. It cannot trigger containment.
+3. **A chat channel approves, n8n is told.** Approval comes from a person in a chat channel (Slack, ADR-0016) or at the
+   terminal (file approver). It is polled outward, so no inbound port exists, and it checks the person's user id against
+   an allow list. n8n (a Webhook node) receives the incident for enrichment, ticketing and paging, but cannot trigger
+   containment: a callback endpoint would be a second control path to defend.
 4. **The Lambda path accepts only signed approvals.** `approval = HMAC(key, finding id | approver | expiry)`.
    Whoever can put events on the bus can forge an unsigned approval, so the signature carries the authority.
 5. **Containment is reversible and minimal.** Keys are deactivated, never deleted. Public buckets get Block
