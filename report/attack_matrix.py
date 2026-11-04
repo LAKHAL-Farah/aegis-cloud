@@ -7,10 +7,13 @@ from __future__ import annotations
 import argparse
 import html
 import json
+import sys
 from collections import OrderedDict
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "cloudpurple"))
+from attacks.scoring import scorable_counts  # noqa: E402
 CARDS = ROOT / "docs" / "evidence" / "scorecards"
 TACTIC_ORDER = ["Initial Access", "Persistence", "Privilege Escalation", "Defense Evasion", "Credential Access",
                 "Discovery", "Collection", "Exfiltration", "Impact"]
@@ -49,12 +52,17 @@ def fmt_mttd(v) -> str:
 def build(before: dict, after: dict, known: dict | None = None) -> tuple[str, str]:
     b_rows, a_rows = {r["id"]: r for r in before["rows"]}, {r["id"]: r for r in after["rows"]}
     bs, as_ = before["summary"], after["summary"]
+    known = known or {}
+    bc, ac = scorable_counts(before["rows"], known), scorable_counts(after["rows"], known)
+    note = (f"{ac['run']} scenarios run; {', '.join(ac['excluded'])} excluded from the denominator (LocalStack limitation, "
+            "see docs/known-limits.json)") if ac["excluded"] else ""
     md = [f"# ATT&CK coverage: {before['label']} to {after['label']}", "",
           f"| | {before['label']} | {after['label']} |", "| --- | --- | --- |",
-          f"| Detected | {bs['detected']} of {bs['total']} | **{as_['detected']} of {as_['total']}** |",
+          f"| Detected (scorable) | {bc['detected_scorable']} of {bc['scorable']} | **{ac['detected_scorable']} of {ac['scorable']}** |",
           f"| Prevented on hardened twin | {bs['prevented']} of {bs['total']} | {as_['prevented']} of {as_['total']} |",
           f"| Mean time to detect | {fmt_mttd(bs.get('mean_mttd'))} | {fmt_mttd(as_.get('mean_mttd'))} |",
           f"| Other alerts during the run | - | {as_.get('other_alerts', 0)} |", "",
+          *([f"_{note}._", ""] if note else []),
           "## Per scenario", "",
           "| ID | ATT&CK | Scenario | Before | After | MTTD | Detected by | Why missed |",
           "| --- | --- | --- | --- | --- | --- | --- | --- |"]
@@ -63,7 +71,7 @@ def build(before: dict, after: dict, known: dict | None = None) -> tuple[str, st
         by = f"{a.get('alert_rule')} ({a.get('alert_source')})" if a.get("detected") else "-"
         why = "-" if a.get("detected") else miss_reason(a, known)
         md.append(f"| {sid} | {a['technique']} | {a['name']} | {'detected' if b.get('detected') else 'missed'} | "
-                  f"**{'detected' if a.get('detected') else 'MISSED'}** | {fmt_mttd(a.get('mttd'))} | {by} | {why} |")
+                  f"**{'detected' if a.get('detected') else ('EXCLUDED' if sid in known else 'MISSED')}** | {fmt_mttd(a.get('mttd'))} | {by} | {why} |")
 
     grid: "OrderedDict[str, list]" = OrderedDict((t, []) for t in TACTIC_ORDER)
     for a in a_rows.values():
@@ -93,7 +101,7 @@ body{{font:14px system-ui,sans-serif;background:var(--bg);color:var(--fg);margin
 .cell{{border-left:4px solid;padding:8px;margin-bottom:8px;border-radius:4px}}.ok{{background:var(--ok);border-color:var(--okb)}}
 .miss{{background:var(--miss);border-color:var(--missb)}}.cell span,.cell small{{display:block}}.cell small{{opacity:.75}}
 </style><h1>ATT&amp;CK coverage: {html.escape(before['label'])} &rarr; {html.escape(after['label'])}:
-{as_['detected']} of {as_['total']} detected</h1><div class="grid">{''.join(cells)}</div>"""
+{ac['detected_scorable']} of {ac['scorable']} scorable detected{(' (' + html.escape(', '.join(ac['excluded'])) + ' excluded: LocalStack limitation)') if ac['excluded'] else ''}</h1><div class="grid">{''.join(cells)}</div>"""
     return "\n".join(md) + "\n", page
 
 

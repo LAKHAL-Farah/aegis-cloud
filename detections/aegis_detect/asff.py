@@ -37,6 +37,7 @@ def to_asff(d: Detection, region: str = "us-east-1") -> dict:
             "aegis/event_id": d.event_id,
             "aegis/event_time": when,
             "aegis/source": d.source,
+            **({"aegis/access_key_id": d.access_key_id} if d.access_key_id else {}),
         },
     }
 

@@ -1,6 +1,9 @@
 """Outcome classification, verdicts and the scorecard report."""
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 SUCCEEDED, DENIED, ERROR = "SUCCEEDED", "DENIED", "ERROR"
 PREVENTED, DETECTED, NEITHER = "PREVENTED", "DETECTED", "NEITHER"
 
@@ -39,12 +42,35 @@ def verdict(hardened_outcome: str | None, detected: bool) -> str:
     return "+".join(parts) or NEITHER
 
 
-def summarize(rows: list[dict]) -> dict:
+KNOWN_LIMITS = Path(__file__).resolve().parents[2] / "docs" / "known-limits.json"
+
+
+def load_known_limits(path: Path | None = None) -> dict[str, str]:
+    """docs/known-limits.json: {"S08": "why this scenario cannot be scored on LocalStack"}.
+
+    A scenario listed here still RUNS and still appears in every table, but it leaves the scorable
+    denominator (ADR-0014). Every entry must point at evidence under docs/evidence/ (tests enforce it)."""
+    p = Path(path or KNOWN_LIMITS)
+    return json.loads(p.read_text()) if p.exists() else {}
+
+
+def scorable_counts(rows: list[dict], known: dict[str, str] | None = None) -> dict:
+    """Detected-of-scorable, computed from the rows alone so it also works on older scorecards."""
+    known = known or {}
+    excluded = sorted(r["id"] for r in rows if r.get("id") in known)
+    scorable = [r for r in rows if r.get("id") not in known]
+    return {"run": len(rows), "scorable": len(scorable), "excluded": excluded,
+            "detected_scorable": sum(bool(r.get("detected")) for r in scorable)}
+
+
+def summarize(rows: list[dict], known: dict[str, str] | None = None) -> dict:
     def outcome(r, side):
         return (r.get(side) or {}).get("outcome")
 
     mttds = [r["mttd"] for r in rows if r.get("mttd") is not None]
+    sc = scorable_counts(rows, known)
     return {
+        "scorable": sc["scorable"], "excluded": sc["excluded"], "detected_scorable": sc["detected_scorable"],
         "total": len(rows),
         "errored": sum(outcome(r, "purple") == ERROR for r in rows),
         "succeeded_on_purple": sum(outcome(r, "purple") == SUCCEEDED for r in rows),
@@ -65,12 +91,19 @@ def _cell(side: dict | None) -> str:
 
 
 def headline(s: dict) -> str:
-    return (f"Detected: {s['detected']} of {s['total']}  |  "
+    """Never print a bare 'N of N': when scenarios are excluded the denominator says so."""
+    if s.get("excluded"):
+        det = (f"Detected: {s['detected_scorable']} of {s['scorable']} scorable "
+               f"({s['total']} run, {', '.join(s['excluded'])} excluded: LocalStack limitation)")
+    else:
+        det = f"Detected: {s['detected']} of {s['total']}"
+    return (f"{det}  |  "
             f"Prevented on hardened twin: {s['prevented']} of {s['total']}  |  "
             f"Neither: {s['neither']}  |  Errored: {s['errored']}")
 
 
-def render_markdown(label: str, stamp: str, rows: list[dict], s: dict) -> str:
+def render_markdown(label: str, stamp: str, rows: list[dict], s: dict, known: dict[str, str] | None = None) -> str:
+    known = known or {}
     out = [f"# CloudPurple scorecard: {label}", "", f"_Generated {stamp}_", "", f"**{headline(s)}**", ""]
     if s["mean_mttd"] is not None:
         out += [f"Mean time to detect: {s['mean_mttd']:.1f} s", ""]
@@ -83,8 +116,12 @@ def render_markdown(label: str, stamp: str, rows: list[dict], s: dict) -> str:
         tele = (r.get("purple") or {}).get("telemetry", "-")
         mttd = f"{r['mttd']:.1f} s" if r.get("mttd") is not None else "-"
         out.append(f"| {r['id']} | {r['technique']} | {r['name']} | {_cell(r.get('purple'))} | "
-                   f"{_cell(r.get('hardened'))} | {tele} | {'yes' if r.get('detected') else 'no'} | {mttd} | {r['verdict']} |")
+                   f"{_cell(r.get('hardened'))} | {tele} | {'yes' if r.get('detected') else 'no'} | {mttd} | "
+                   f"{r['verdict']}{' (excluded)' if r['id'] in known else ''} |")
     out += ["", "## Notes", ""]
+    for sid, why in sorted(known.items()):
+        if any(r["id"] == sid for r in rows):
+            out.append(f"* {sid} is excluded from the scorable count: {why}")
     for r in rows:
         for side in ("purple", "hardened"):
             d = r.get(side)

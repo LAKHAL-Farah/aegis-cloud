@@ -6,15 +6,18 @@ on:
       - "detections/**"
       - "siem/**"
       - "report/**"
+      - "response/**"
       - "docker-compose.siem.yml"
       - "cloudpurple/attacks/**"
       - "docs/detection-contract.md"
+      - "docs/known-limits.json"
   push:
     branches: [main]
     paths:
       - "detections/**"
       - "siem/**"
       - "report/**"
+      - "response/**"
   workflow_dispatch:
 
 permissions:
@@ -49,3 +52,16 @@ jobs:
       - run: python3 -m pytest siem/tests report/tests -q
       - name: compose file parses
         run: docker compose -f docker-compose.siem.yml --profile wazuh config -q
+
+  response:
+    name: playbooks, approval, audit, Lambda (pytest + moto, no LocalStack, no network)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r detections/requirements.txt -r response/requirements.txt
+      - run: python3 -m pytest response/tests -q
+      - name: the Lambda package builds
+        run: bash response/package_lambda.sh

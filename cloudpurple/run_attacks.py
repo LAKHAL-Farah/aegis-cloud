@@ -28,7 +28,8 @@ from attacks.attribution import attribute_alerts
 from attacks.context import Context, Target
 from attacks.detection import load_alerts, telemetry_status
 from attacks.scenario import all_scenarios
-from attacks.scoring import DENIED, ERROR, SUCCEEDED, is_denied, prevented_by, summarize, headline, render_markdown
+from attacks.scoring import (DENIED, ERROR, SUCCEEDED, headline, is_denied, load_known_limits, prevented_by,
+                             render_markdown, summarize)
 
 ROOT = HERE.parent
 ENDPOINT = os.environ.get("LOCALSTACK_ENDPOINT", "http://localhost:4566")
@@ -92,14 +93,15 @@ def run_one(sc, target_data: dict, run_id: str, as_root: bool) -> dict:
     return {"side": result, "t0": t0}
 
 def write_scorecard(label: str, run_id: str, rows: list[dict], extras: dict, meta: dict) -> None:
-    summary = summarize(rows)
+    known = load_known_limits()
+    summary = summarize(rows, known)
     summary.update(extras)
     stamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     out_dir = ROOT / "docs" / "evidence" / "scorecards"
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / f"{label}.json").write_text(json.dumps(
         {"label": label, "run_id": run_id, "generated": stamp, "summary": summary, "meta": meta, "rows": rows}, indent=2))
-    (out_dir / f"{label}.md").write_text(render_markdown(label, stamp, rows, summary))
+    (out_dir / f"{label}.md").write_text(render_markdown(label, stamp, rows, summary, known))
     print(f"\n{headline(summary)}")
     print(f"wrote {out_dir}/{label}.md and {label}.json")
 
