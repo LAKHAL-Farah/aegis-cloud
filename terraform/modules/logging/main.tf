@@ -3,6 +3,8 @@ locals {
   archive_bucket_arn  = "arn:aws:s3:::${local.archive_bucket_name}"
   access_bucket_name  = "${local.archive_bucket_name}-access-logs"
   trail_arn           = "arn:aws:cloudtrail:${var.region}:${var.management_account_id}:trail/${var.trail_name}"
+  log_group_name      = "/aegis/cloudtrail/${var.trail_name}"
+  cwl_enabled         = var.create_trail && var.create_trail_key && var.enable_cloudwatch_logs
 }
 
 # ---------- log_archive account: key + buckets ----------
@@ -126,8 +128,6 @@ module "archive" {
 
 # ---------- management account: the trail ----------
 
-# ---------- management account: the trail ----------
-
 resource "aws_kms_key" "trail" {
   #checkov:skip=CKV_AWS_109:Key policies must use Resource "*" (it means "this key") and delegate to IAM via the account root
   #checkov:skip=CKV_AWS_111:Same: key-policy statements apply to this key only
@@ -155,12 +155,57 @@ resource "aws_kms_key" "trail" {
         Resource  = "*"
         Condition = { StringEquals = { "aws:SourceArn" = local.trail_arn } }
       },
+      {
+        Sid       = "AllowCloudWatchLogsToUseTheKey"
+        Effect    = "Allow"
+        Principal = { Service = "logs.${var.region}.amazonaws.com" }
+        Action    = ["kms:Encrypt*", "kms:Decrypt*", "kms:ReEncrypt*", "kms:GenerateDataKey*", "kms:Describe*"]
+        Resource  = "*"
+        Condition = { ArnLike = { "kms:EncryptionContext:aws:logs:arn" = "arn:aws:logs:${var.region}:${var.management_account_id}:log-group:${local.log_group_name}" } }
+      },
     ]
   })
 }
 
+# ---------- CIS 3.4: the trail also writes to CloudWatch Logs, where the CIS section 4 metric filters live ----------
+
+resource "aws_cloudwatch_log_group" "trail" {
+  count             = local.cwl_enabled ? 1 : 0
+  name              = local.log_group_name
+  retention_in_days = var.cloudwatch_retention_days
+  kms_key_id        = aws_kms_key.trail[0].arn
+}
+
+resource "aws_iam_role" "trail_to_cwl" {
+  count = local.cwl_enabled ? 1 : 0
+  name  = "${var.name_prefix}-trail-to-cloudwatch-logs"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "cloudtrail.amazonaws.com" }
+      Action    = "sts:AssumeRole"
+      Condition = { StringEquals = { "aws:SourceArn" = local.trail_arn } }
+    }]
+  })
+}
+
+resource "aws_iam_role_policy" "trail_to_cwl" {
+  count = local.cwl_enabled ? 1 : 0
+  name  = "write-trail-events"
+  role  = aws_iam_role.trail_to_cwl[0].id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = ["logs:CreateLogStream", "logs:PutLogEvents"]
+      Resource = "${aws_cloudwatch_log_group.trail[0].arn}:log-stream:*"
+    }]
+  })
+}
+
 resource "aws_cloudtrail" "main" {
-  #checkov:skip=CKV2_AWS_10:CloudWatch Logs delivery + metric filters (CIS 3.4 / section 4) are planned for Stage 5; tracked in cis-mapping.md
+  #checkov:skip=CKV2_AWS_10:False positive. The attributes below ARE set (CIS 3.4) but Checkov's graph cannot follow the count-guarded reference. Proven instead by logging.tftest.hcl and the live check `trail_cloudwatch_logs` in compliance_score.py
   #checkov:skip=CKV_AWS_252:No SNS topic by design; trail events reach responders through EventBridge to n8n in Stage 4 (ADR-0005)
   count                         = var.create_trail ? 1 : 0
   name                          = var.trail_name
@@ -171,5 +216,10 @@ resource "aws_cloudtrail" "main" {
   enable_log_file_validation    = true
   is_organization_trail         = var.is_organization_trail
   enable_logging                = true
+
+  cloud_watch_logs_group_arn = length(aws_cloudwatch_log_group.trail) == 0 ? null : "${aws_cloudwatch_log_group.trail[0].arn}:*"
+  cloud_watch_logs_role_arn  = length(aws_iam_role.trail_to_cwl) == 0 ? null : aws_iam_role.trail_to_cwl[0].arn
+
+  depends_on = [aws_iam_role_policy.trail_to_cwl]
 }
 

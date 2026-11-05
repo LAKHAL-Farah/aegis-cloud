@@ -52,3 +52,44 @@ run "nothing_is_created_by_default" {
     error_message = "Both toggles default to false."
   }
 }
+
+run "trail_goes_to_an_encrypted_log_group_when_enabled" {
+  command = plan
+
+  variables {
+    create_trail           = true
+    create_trail_key       = true
+    enable_cloudwatch_logs = true
+    log_bucket_name        = "aegis-log-archive-222222222222"
+  }
+
+  assert {
+    condition     = length(aws_cloudwatch_log_group.trail) == 1 && aws_cloudwatch_log_group.trail[0].retention_in_days >= 365
+    error_message = "CIS 3.4: the trail needs a log group that keeps events for at least a year."
+  }
+
+  assert {
+    condition     = aws_cloudtrail.main[0].cloud_watch_logs_group_arn != null
+    error_message = "CIS 3.4: the trail must deliver to CloudWatch Logs."
+  }
+
+  assert {
+    condition     = output.log_group_name == "/aegis/cloudtrail/aegis-org-trail"
+    error_message = "The monitoring module and compliance_score.py look the group up by this name."
+  }
+}
+
+run "no_log_group_unless_asked" {
+  command = plan
+
+  variables {
+    create_trail     = true
+    create_trail_key = true
+    log_bucket_name  = "aegis-log-archive-222222222222"
+  }
+
+  assert {
+    condition     = length(aws_cloudwatch_log_group.trail) == 0 && aws_cloudtrail.main[0].cloud_watch_logs_group_arn == null
+    error_message = "enable_cloudwatch_logs defaults to false so the Stage 1 roots keep planning the same."
+  }
+}

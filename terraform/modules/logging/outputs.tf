@@ -9,3 +9,8 @@ output "kms_key_arn" {
 output "trail_arn" {
   value = var.create_trail ? aws_cloudtrail.main[0].arn : null
 }
+
+output "log_group_name" {
+  description = "CloudWatch Logs group that receives the trail (null unless enable_cloudwatch_logs)"
+  value       = local.cwl_enabled ? aws_cloudwatch_log_group.trail[0].name : null
+}

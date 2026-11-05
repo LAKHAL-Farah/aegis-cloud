@@ -63,3 +63,15 @@ variable "create_trail_key" {
   type        = bool
   default     = false
 }
+
+variable "enable_cloudwatch_logs" {
+  description = "Deliver the trail to a KMS-encrypted CloudWatch Logs group (CIS 3.4). Needs create_trail and create_trail_key."
+  type        = bool
+  default     = false
+}
+
+variable "cloudwatch_retention_days" {
+  description = "Retention of the trail's log group. 365 satisfies Checkov CKV_AWS_338 and CIS 3.x guidance."
+  type        = number
+  default     = 365
+}
