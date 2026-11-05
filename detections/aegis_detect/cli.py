@@ -13,7 +13,9 @@ import boto3
 from botocore.config import Config
 
 from . import sources
+from .checkpoint import Checkpoint
 from .engine import Engine
+from .heartbeat import Heartbeat
 from .model import Event
 from .policy import Policy
 from .rules import all_rules
@@ -101,15 +103,22 @@ def cmd_watch(args) -> int:
     _guard()
     targets = _targets()
     mode = _choose_source(args.source)
-    srcs = build_sources(args.accounts.split(","), mode, targets, from_now=not args.replay)
     engine, sinks = Engine(Policy.load(args.policy)), _sinks(args, targets)
+    ck = Checkpoint(args.state_file) if args.state_file else None
+    saved = ck.load() if ck and not args.replay else None
+    srcs = build_sources(args.accounts.split(","), mode, targets, from_now=not args.replay and saved is None)
+    resumed = ck.apply(saved, srcs, engine) if saved else 0
+    beat = Heartbeat(args.heartbeat_file, "detector") if args.heartbeat_file else None
     mirror = Path(args.mirror) if args.mirror else None
     event_index = OpenSearchEvents(args.opensearch) if args.opensearch else None
     stop = {"flag": False}
     signal.signal(signal.SIGTERM, lambda *_: stop.update(flag=True))
     signal.signal(signal.SIGINT, lambda *_: stop.update(flag=True))
     print(f"detector up: source={mode}, accounts={args.accounts}, interval={args.interval}s, "
-          f"{'replaying history' if args.replay else 'from now'}, {len(engine.rules)} rules", flush=True)
+          f"{'replaying history' if args.replay else f'RESUMED {resumed} source(s) from checkpoint' if saved else 'from now'}, "
+          f"{len(engine.rules)} rules", flush=True)
+    if ck and not saved:
+        ck.save(srcs, engine)       # a crash right after start must still resume
     while not stop["flag"]:
         batch: list[Event] = []
         for s in srcs:
@@ -127,6 +136,13 @@ def cmd_watch(args) -> int:
             for sink in sinks:
                 sink.emit(det)
             print(f"  ALERT {det.severity.upper():8} {det.technique:10} {det.rule_id}  {det.summary}", flush=True)
+        if ck:
+            try:
+                ck.save(srcs, engine)   # after the sinks: a crash in between repeats an alert, never loses one
+            except OSError as exc:
+                print(f"  [warn] checkpoint not saved: {exc}", flush=True)
+        if beat:
+            beat.beat()
         if args.once:
             break
         time.sleep(args.interval)
@@ -170,6 +186,8 @@ def main(argv=None) -> int:
     w.add_argument("--opensearch", default=None, help="e.g. http://localhost:9200")
     w.add_argument("--eventbridge", default=None, help="bus name, e.g. aegis-findings")
     w.add_argument("--policy", default=None)
+    w.add_argument("--state-file", default=None, help="checkpoint file: a restart resumes where it stopped (ADR-0018)")
+    w.add_argument("--heartbeat-file", default=None, help="write a liveness heartbeat here every poll (docs/ops-contract.md)")
     w.set_defaults(fn=cmd_watch)
 
     r = sub.add_parser("rules", help="list rules as a markdown table")

@@ -42,6 +42,12 @@ class S3TrailSource:
         self.done.update(self._keys())
         return len(self.done)
 
+    def state(self) -> dict:
+        return {"done": sorted(self.done)}
+
+    def restore(self, state: dict) -> None:
+        self.done = set(state.get("done", []))
+
     def poll(self) -> list[Event]:
         events: list[Event] = []
         for key in self._keys():
@@ -75,6 +81,13 @@ class LookupSource:
     def prime(self) -> int:
         self.cursor = datetime.now(timezone.utc)
         return 0
+
+    def state(self) -> dict:
+        return {"cursor": self.cursor.isoformat()}
+
+    def restore(self, state: dict) -> None:
+        if state.get("cursor"):
+            self.cursor = datetime.fromisoformat(state["cursor"])
 
     def poll(self) -> list[Event]:
         start, now = self.cursor - self.overlap, datetime.now(timezone.utc)
@@ -111,6 +124,12 @@ class TrailStateSource:
 
     def prime(self) -> int:
         return 0
+
+    def state(self) -> dict:
+        return {}
+
+    def restore(self, state: dict) -> None:
+        return None
 
     def poll(self) -> Iterable[Event]:
         try:
