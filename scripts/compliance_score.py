@@ -102,6 +102,32 @@ def trail_bucket_logging():
     return (PASS if "LoggingEnabled" in resp else FAIL), f"{bucket} logging={'LoggingEnabled' in resp}"
 
 
+def trail_cloudwatch_logs():
+    _, trails = _trails()
+    if not trails:
+        return FAIL, "no trails"
+    bad = [t["Name"] for t in trails if not t.get("CloudWatchLogsLogGroupArn")]
+    return (PASS if not bad else FAIL), f"without a CloudWatch Logs group: {bad or 'none'}"
+
+
+CIS_SECTION_4_CONTROLS = 15          # CIS v1.4.0 controls 4.1 to 4.15
+
+
+def cis_monitoring_alarms():
+    """Every section 4 control has a metric filter on the trail's log group AND an alarm that notifies someone."""
+    _, trails = _trails()
+    arn = next((t.get("CloudWatchLogsLogGroupArn") for t in trails if t.get("CloudWatchLogsLogGroupArn")), None)
+    if not arn:
+        return FAIL, "the trail has no CloudWatch Logs group, so there is nothing to filter"
+    group = arn.split(":log-group:")[1].removesuffix(":*")
+    filters = [f for page in client("logs", "management").get_paginator("describe_metric_filters").paginate(logGroupName=group)
+               for f in page["metricFilters"] if f["filterName"].startswith("aegis-cis-4_")]
+    alarms = [a for page in client("cloudwatch", "management").get_paginator("describe_alarms").paginate(AlarmNamePrefix="aegis-cis-4_")
+              for a in page["MetricAlarms"] if a.get("AlarmActions")]
+    ok = len(filters) == CIS_SECTION_4_CONTROLS and len(alarms) == CIS_SECTION_4_CONTROLS
+    return (PASS if ok else FAIL), f"{len(filters)}/{CIS_SECTION_4_CONTROLS} filters, {len(alarms)}/{CIS_SECTION_4_CONTROLS} alarms with an action"
+
+
 def s3_public_block():
     bad, seen = [], 0
     for acct in ACCOUNTS:
@@ -176,7 +202,7 @@ LIVE = {
     f.__name__: f
     for f in (
         root_mfa, password_policy_length, password_policy_reuse, trail_multi_region, trail_validation,
-        trail_kms, trail_bucket_logging, s3_public_block, sg_admin_ports, default_sg_closed,
+        trail_kms, trail_bucket_logging, trail_cloudwatch_logs, cis_monitoring_alarms, s3_public_block, sg_admin_ports, default_sg_closed,
         vpc_flow_logs, kms_rotation,
     )
 }

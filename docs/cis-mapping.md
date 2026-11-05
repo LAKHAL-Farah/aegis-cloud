@@ -15,12 +15,12 @@ Machine-readable twin: `policies/cis_controls.json` (used by `scripts/compliance
 | 2.1.5 | S3 Block Public Access | `aws_s3_bucket_public_access_block.this` | OPA AEG-S3-001, Checkov CKV_AWS_53-56, SCP `deny-public-s3-acls` | boto3 `s3_public_block` | enforced |
 | 3.1 | CloudTrail in all regions | `aws_cloudtrail.main` | Checkov CKV_AWS_67, `terraform test` (logging) | boto3 `trail_multi_region` | enforced |
 | 3.2 | Log file validation | `aws_cloudtrail.main` | Checkov CKV_AWS_36, `terraform test` | boto3 `trail_validation` | enforced |
-| 3.4 | CloudTrail to CloudWatch Logs | planned | skipped CKV2_AWS_10 (justified) | planned | Stage 5 |
+| 3.4 | CloudTrail to CloudWatch Logs | `aws_cloudwatch_log_group.trail`, `aws_cloudtrail.main` (`cloud_watch_logs_group_arn`) | `terraform test` (Checkov CKV2_AWS_10 skipped: its graph cannot follow the count-guarded reference, justified inline) | live check `trail_cloudwatch_logs` |
 | 3.6 | S3 access logging on trail bucket | `module.archive` + `aws_s3_bucket_logging` | Checkov CKV_AWS_18 | boto3 `trail_bucket_logging` | enforced |
 | 3.7 | Trail encrypted with KMS | `aws_cloudtrail.main.kms_key_id` | Checkov CKV_AWS_35, `terraform test` | boto3 `trail_kms` | enforced |
 | 3.8 | CMK rotation | `aws_kms_key.*` | Checkov CKV_AWS_7, `terraform test` | boto3 `kms_rotation` | enforced |
 | 3.9 | VPC flow logs | `aws_flow_log.this` | Checkov CKV2_AWS_11 | boto3 `vpc_flow_logs` | enforced |
-| 4.x | Metric filters and alarms | `aws_cloudwatch_log_metric_filter` | tflint | CloudWatch alarms | Stage 5 |
+| 4.1 to 4.15 | Metric filters and alarms for the 15 section 4 controls | `aws_cloudwatch_log_metric_filter.cis`, `aws_cloudwatch_metric_alarm.cis` (module `monitoring`) | `terraform test` (15 filters, 15 alarms, each with an action and a runbook) | live check `cis_monitoring_alarms`. **Definitions only on LocalStack: they cannot fire there (ADR-0017)** |
 | 5.1 | No NACL admin ports from world | `aws_network_acl_rule.this` | OPA AEG-NET-002, `terraform test` (network) | n/a | enforced |
 | 5.2 | No SG admin ports from world | `aws_vpc_security_group_ingress_rule` | OPA AEG-NET-001/003, Checkov CKV_AWS_24/25 | boto3 `sg_admin_ports` | enforced |
 | 5.3 | Default SG restricts all | `aws_default_security_group.this` | Checkov CKV2_AWS_12 | boto3 `default_sg_closed` | enforced |

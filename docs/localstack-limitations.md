@@ -90,3 +90,20 @@ Detected: 0 of 12. Prevented on hardened: 3 of 12.
 - **ENFORCED**: a denial was observed and attributed to that layer by a controlled comparison.
 - **PENDING / UNVERIFIED**: no evidence yet. Do not cite in the post.
 - **SCPs are stored and attachable.** They are evaluated only with `ENFORCE_IAM=1`, and not every condition key is verified. The management account is exempt from SCPs in real AWS, so tests use a member account.
+
+## Stage 5: operations (2026-11-05; confirm each line with `make ops-probe` and record the LocalStack version)
+The rows below are what the design assumes until the probe says otherwise. Predictions are in `docs/stage5-predictions.md`.
+
+| Capability | Expected here | What the project does about it |
+| --- | --- | --- |
+| CloudWatch custom metrics | works | the watchdog publishes `Aegis/Pipeline ComponentUp` |
+| CloudWatch alarm evaluation | stored, not evaluated (`set_alarm_state` works) | SLOs computed by us from the watchdog log (ADR-0017); the alarms are portable definitions |
+| CloudTrail to CloudWatch Logs delivery, metric filters firing | unverified, expected not to deliver | CIS 3.4 and 4.1-4.15 proven by `terraform test` and a "definitions exist" live check; the equivalent detections run in our own engine |
+| SSM Patch Manager, Run Command | definitions stored, no instance executes | module behind `enable_patching` (default off); never claimed as "patched" |
+| AWS Backup | vault and plan stored, restore unverified | module behind `enable_backup` (default off); the restore proof is the S3 versioning drill |
+| S3 versioning, delete markers, copy of a version | works | `make ops-drill` |
+
+Also, from Stage 5's own code review (ADR-0018):
+* The detector's rule windows (sliding-window correlation) are not checkpointed; a correlation straddling a crash can be missed.
+* Delivery after a crash is at-least-once: an alert can repeat, never vanish.
+
