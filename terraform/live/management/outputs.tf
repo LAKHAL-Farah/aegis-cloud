@@ -8,3 +8,7 @@ output "trail_arn" {
 output "member_account_ids" {
   value = module.organization.member_account_ids
 }
+
+output "cis_alarm_names" {
+  value = module.monitoring.cis_alarm_names
+}

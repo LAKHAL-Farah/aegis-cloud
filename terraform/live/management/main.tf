@@ -41,11 +41,20 @@ module "trail" {
   log_archive_account_id = var.accounts["log_archive"]
   management_account_id  = var.accounts["management"]
 
-  create_log_archive    = false
-  create_trail          = true
-  create_trail_key      = true # was: kms_key_arn = local.log_kms
-  is_organization_trail = var.use_org_trail
-  log_bucket_name       = local.log_bucket
+  create_log_archive     = false
+  create_trail           = true
+  create_trail_key       = true # was: kms_key_arn = local.log_kms
+  enable_cloudwatch_logs = true # CIS 3.4: the trail also feeds the section 4 metric filters
+  is_organization_trail  = var.use_org_trail
+  log_bucket_name        = local.log_bucket
 
   depends_on = [module.organization]
+}
+
+# CIS section 4 (4.1 to 4.15): a metric filter and an alarm per control, on the trail's CloudWatch Logs group.
+module "monitoring" {
+  source         = "../../modules/monitoring"
+  region         = var.region
+  account_id     = var.accounts[var.account_name]
+  log_group_name = module.trail.log_group_name
 }
