@@ -1,0 +1,53 @@
+{
+  "label": "stage5-v2-baseline-responder-kill-pending-key",
+  "run_id": "fafd9d8b",
+  "generated": "2026-11-05 22:10 UTC",
+  "summary": {
+    "scorable": 1,
+    "excluded": [],
+    "detected_scorable": 0,
+    "total": 1,
+    "errored": 0,
+    "succeeded_on_purple": 1,
+    "detected": 0,
+    "prevented": 0,
+    "neither": 1,
+    "mean_mttd": null,
+    "other_alerts": 0,
+    "other_by_rule": {}
+  },
+  "meta": {
+    "purple_account": "555555555555",
+    "hardened_account": "746346455013",
+    "window_s": 120,
+    "settle_s": 0,
+    "as_root": false,
+    "alert_source": null
+  },
+  "rows": [
+    {
+      "id": "S11",
+      "name": "Harvest secrets",
+      "technique": "T1555.006",
+      "tactic": "Credential Access",
+      "purple": {
+        "outcome": "SUCCEEDED",
+        "detail": "read secret purple/db-password",
+        "telemetry": "FULL"
+      },
+      "hardened": {
+        "outcome": "SUCCEEDED",
+        "detail": "read secret hardened/db-password",
+        "telemetry": "-"
+      },
+      "attack_start": "2026-11-05T22:10:07.894Z",
+      "attack_end": "2026-11-05T22:10:16.454Z",
+      "detected": false,
+      "mttd": null,
+      "alert": null,
+      "alert_source": null,
+      "alert_rule": null,
+      "verdict": "NEITHER"
+    }
+  ]
+}

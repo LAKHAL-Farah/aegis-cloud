@@ -1,0 +1,53 @@
+{
+  "label": "stage5-v2-baseline-detector-kill-gap",
+  "run_id": "212bdf3a",
+  "generated": "2026-11-05 22:08 UTC",
+  "summary": {
+    "scorable": 1,
+    "excluded": [],
+    "detected_scorable": 0,
+    "total": 1,
+    "errored": 0,
+    "succeeded_on_purple": 1,
+    "detected": 0,
+    "prevented": 0,
+    "neither": 1,
+    "mean_mttd": null,
+    "other_alerts": 0,
+    "other_by_rule": {}
+  },
+  "meta": {
+    "purple_account": "555555555555",
+    "hardened_account": "746346455013",
+    "window_s": 120,
+    "settle_s": 0,
+    "as_root": false,
+    "alert_source": null
+  },
+  "rows": [
+    {
+      "id": "S01",
+      "name": "Cloud infrastructure discovery",
+      "technique": "T1580",
+      "tactic": "Discovery",
+      "purple": {
+        "outcome": "SUCCEEDED",
+        "detail": "enumerated s3, ec2 instances, iam users, security groups",
+        "telemetry": "FULL"
+      },
+      "hardened": {
+        "outcome": "SUCCEEDED",
+        "detail": "enumerated s3, ec2 instances, iam users, security groups",
+        "telemetry": "-"
+      },
+      "attack_start": "2026-11-05T22:08:15.467Z",
+      "attack_end": "2026-11-05T22:08:24.640Z",
+      "detected": false,
+      "mttd": null,
+      "alert": null,
+      "alert_source": null,
+      "alert_rule": null,
+      "verdict": "NEITHER"
+    }
+  ]
+}
