@@ -73,6 +73,19 @@ class Ledger:
             return None
 
 
+    def release(self, incident_id: str) -> bool:
+        """Forget a claim, so an incident that was interrupted before it finished can be handled again.
+        Removes the principal cooldown written by the same claim (same timestamp), never anyone else's."""
+        with self._lock:
+            claimed = self.data["incidents"].pop(incident_id, None)
+            if claimed is None:
+                return False
+            for key in [k for k, v in self.data["principals"].items() if v == claimed]:
+                del self.data["principals"][key]
+            self.path.write_text(json.dumps(self.data))
+            return True
+
+
 class Responder:
     def __init__(self, *, policy: ResponsePolicy, approver, notifier, audit: AuditLog, ledger: Ledger,
                  endpoint: str | None = None, region: str = "us-east-1", execute: bool = False,

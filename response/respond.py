@@ -30,6 +30,7 @@ from aegis_respond.audit import AuditLog  # noqa: E402
 from aegis_respond.clients import is_local  # noqa: E402
 from aegis_respond.config import build_approver, build_notifier  # noqa: E402
 from aegis_respond.engine import Ledger, Responder  # noqa: E402
+from aegis_respond.heartbeat import Heartbeat  # noqa: E402
 from aegis_respond.policy import ResponsePolicy  # noqa: E402
 from aegis_respond.watch import watch  # noqa: E402
 
@@ -87,6 +88,11 @@ def main() -> int:
     common(w)
     w.add_argument("--findings-dir", default=str(ROOT / "build" / "findings"))
     w.add_argument("--replay", action="store_true", help="also handle findings already on disk")
+    w.add_argument("--resume", action="store_true",
+                   help="after a crash: handle what the audit trail says is still owed, skip what is closed (ADR-0018)")
+    w.add_argument("--resume-max-age", type=float, default=900.0, metavar="SECONDS",
+                   help="with --resume: ignore findings detected longer ago than this (default 900)")
+    w.add_argument("--heartbeat-file", default=None, help="write a liveness heartbeat here every loop (docs/ops-contract.md)")
     h = sub.add_parser("handle")
     common(h)
     h.add_argument("finding")
@@ -145,7 +151,10 @@ def main() -> int:
     print(f"responder watching {args.findings_dir}  [{mode}, approver={args.approver}]  Ctrl-C to stop", flush=True)
     stop = threading.Event()
     try:
-        watch(responder, Path(args.findings_dir), stop, replay=args.replay,
+        beat = Heartbeat(args.heartbeat_file, "responder") if args.heartbeat_file else None
+        watch(responder, Path(args.findings_dir), stop, replay=args.replay, resume=args.resume,
+              resume_max_age_s=args.resume_max_age,
+              on_tick=beat.beat if beat else None,
               on_outcome=lambda name, out: print(f"  {name}: {out.status} {out.detail}", flush=True))
     except KeyboardInterrupt:
         stop.set()
