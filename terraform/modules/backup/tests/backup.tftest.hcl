@@ -6,7 +6,7 @@ variables {
 }
 
 run "vault_is_encrypted_with_a_rotating_key" {
-  command = plan
+  command = apply   
 
   assert {
     condition     = aws_kms_key.vault.enable_key_rotation == true && aws_backup_vault.this.kms_key_arn != null
