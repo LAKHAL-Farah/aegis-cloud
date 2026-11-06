@@ -1,4 +1,16 @@
-mock_provider "aws" {}
+mock_provider "aws" {
+  mock_resource "aws_kms_key" {
+    defaults = {
+      arn = "arn:aws:kms:us-east-1:444444444444:key/00000000-0000-0000-0000-000000000000"
+    }
+  }
+
+  mock_resource "aws_iam_role" {
+    defaults = {
+      arn = "arn:aws:iam::444444444444:role/mock-role"
+    }
+  }
+}
 
 variables {
   account_id    = "444444444444"
@@ -6,7 +18,7 @@ variables {
 }
 
 run "vault_is_encrypted_with_a_rotating_key" {
-  command = apply   
+  command = apply
 
   assert {
     condition     = aws_kms_key.vault.enable_key_rotation == true && aws_backup_vault.this.kms_key_arn != null

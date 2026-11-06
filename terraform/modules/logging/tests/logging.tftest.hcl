@@ -1,4 +1,22 @@
-mock_provider "aws" {}
+mock_provider "aws" {
+  mock_resource "aws_kms_key" {
+    defaults = {
+      arn = "arn:aws:kms:us-east-1:222222222222:key/00000000-0000-0000-0000-000000000000"
+    }
+  }
+
+  mock_resource "aws_cloudwatch_log_group" {
+    defaults = {
+      arn = "arn:aws:logs:us-east-1:222222222222:log-group:/aegis/cloudtrail/aegis-org-trail"
+    }
+  }
+
+  mock_resource "aws_iam_role" {
+    defaults = {
+      arn = "arn:aws:iam::222222222222:role/mock-role"
+    }
+  }
+}
 
 variables {
   log_archive_account_id = "222222222222"
@@ -54,7 +72,7 @@ run "nothing_is_created_by_default" {
 }
 
 run "trail_goes_to_an_encrypted_log_group_when_enabled" {
-  command = plan
+  command = apply
 
   variables {
     create_trail           = true

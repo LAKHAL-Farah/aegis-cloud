@@ -1,4 +1,16 @@
-mock_provider "aws" {}
+mock_provider "aws" {
+  mock_resource "aws_kms_key" {
+    defaults = {
+      arn = "arn:aws:kms:us-east-1:111111111111:key/00000000-0000-0000-0000-000000000000"
+    }
+  }
+
+  mock_resource "aws_sns_topic" {
+    defaults = {
+      arn = "arn:aws:sns:us-east-1:111111111111:aegis-alerts"
+    }
+  }
+}
 
 variables {
   account_id = "111111111111"
@@ -65,7 +77,7 @@ run "pipeline_alarms_treat_silence_as_failure" {
 }
 
 run "alert_topic_is_encrypted_with_a_rotating_key" {
-  command = plan
+  command = apply
 
   assert {
     condition     = aws_kms_key.alerts.enable_key_rotation == true && aws_sns_topic.alerts.kms_master_key_id != null
