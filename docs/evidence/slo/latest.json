@@ -1,0 +1,42 @@
+[
+  {
+    "id": "detection-availability",
+    "title": "Detection path is up",
+    "target": 0.99,
+    "good": 2,
+    "total": 2,
+    "sli": 1.0,
+    "status": "OK",
+    "budget_left": 1.0,
+    "note": "only 2 events: not enough to say the target holds",
+    "extra": {}
+  },
+  {
+    "id": "detection-freshness",
+    "title": "Findings within 30 s of the event",
+    "target": 0.95,
+    "good": 0,
+    "total": 0,
+    "sli": null,
+    "status": "NO DATA",
+    "budget_left": null,
+    "note": "no events in the window",
+    "extra": {
+      "worst_s": 0.0
+    }
+  },
+  {
+    "id": "response-machine-time",
+    "title": "Containment machine time within 5 s",
+    "target": 0.95,
+    "good": 0,
+    "total": 0,
+    "sli": null,
+    "status": "NO DATA",
+    "budget_left": null,
+    "note": "no events in the window",
+    "extra": {
+      "worst_s": 0.0
+    }
+  }
+]

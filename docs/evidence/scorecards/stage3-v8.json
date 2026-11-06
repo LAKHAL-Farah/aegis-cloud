@@ -1,0 +1,324 @@
+{
+  "label": "stage3-v8",
+  "run_id": "439b9d78",
+  "generated": "2026-11-06 01:47 UTC",
+  "summary": {
+    "scorable": 11,
+    "excluded": [
+      "S08"
+    ],
+    "detected_scorable": 11,
+    "total": 12,
+    "errored": 0,
+    "succeeded_on_purple": 12,
+    "detected": 11,
+    "prevented": 3,
+    "neither": 1,
+    "mean_mttd": 3.468909090909091,
+    "other_alerts": 1,
+    "other_by_rule": {
+      "AEG-IMPACT-003": 1
+    }
+  },
+  "meta": {
+    "purple_account": "555555555555",
+    "hardened_account": "863999168850",
+    "window_s": 120,
+    "settle_s": 25,
+    "as_root": false,
+    "alert_source": null
+  },
+  "rows": [
+    {
+      "id": "S01",
+      "name": "Cloud infrastructure discovery",
+      "technique": "T1580",
+      "tactic": "Discovery",
+      "purple": {
+        "outcome": "SUCCEEDED",
+        "detail": "enumerated s3, ec2 instances, iam users, security groups",
+        "telemetry": "FULL"
+      },
+      "hardened": {
+        "outcome": "SUCCEEDED",
+        "detail": "enumerated s3, ec2 instances, iam users, security groups",
+        "telemetry": "-"
+      },
+      "attack_start": "2026-11-06T01:46:43.198Z",
+      "attack_end": "2026-11-06T01:46:48.536Z",
+      "detected": true,
+      "mttd": 5.898,
+      "alert": "Cloud infrastructure discovery burst: 4 calls across 3 services (DescribeSecurityGroups by dev-svc)",
+      "alert_source": "python-engine",
+      "alert_rule": "AEG-DISC-001",
+      "verdict": "DETECTED"
+    },
+    {
+      "id": "S02",
+      "name": "S3 data exfiltration",
+      "technique": "T1530",
+      "tactic": "Collection",
+      "purple": {
+        "outcome": "SUCCEEDED",
+        "detail": "downloaded 12 objects from purple-data-555555555555",
+        "telemetry": "DATA-EVENT (lookup-events cannot see it; check the trail's S3 destination manually)"
+      },
+      "hardened": {
+        "outcome": "SUCCEEDED",
+        "detail": "downloaded 12 objects from hardened-data-863999168850",
+        "telemetry": "-"
+      },
+      "attack_start": "2026-11-06T01:46:48.536Z",
+      "attack_end": "2026-11-06T01:46:48.796Z",
+      "detected": true,
+      "mttd": 0.561,
+      "alert": "Bulk S3 object download: 10 objects from purple-data-555555555555 (GetObject by dev-svc)",
+      "alert_source": "python-engine",
+      "alert_rule": "AEG-EXFIL-003",
+      "verdict": "DETECTED"
+    },
+    {
+      "id": "S03",
+      "name": "Backdoor IAM user + access key",
+      "technique": "T1136.003",
+      "tactic": "Persistence",
+      "purple": {
+        "outcome": "SUCCEEDED",
+        "detail": "created backdoor-439b9d78-S03 with AdministratorAccess, key LKIAYCWNRBDRZAG2VWTM",
+        "telemetry": "FULL"
+      },
+      "hardened": {
+        "outcome": "DENIED",
+        "detail": "User: arn:aws:iam::863999168850:user/dev-svc is not authorized to perform: iam:CreateUser on resource: arn:aws:iam::863999168850:user/backdoor-439b9d78-S03 because no identity-based policy allows the iam:CreateUser action",
+        "prevented_by": "IAM (boundary or policy)",
+        "telemetry": "-"
+      },
+      "attack_start": "2026-11-06T01:46:48.796Z",
+      "attack_end": "2026-11-06T01:46:48.964Z",
+      "detected": true,
+      "mttd": 12.436,
+      "alert": "IAM user created: backdoor-439b9d78-S03 (CreateUser by dev-svc)",
+      "alert_source": "python-engine",
+      "alert_rule": "AEG-PERS-001",
+      "verdict": "PREVENTED+DETECTED"
+    },
+    {
+      "id": "S04",
+      "name": "Disable CloudTrail logging",
+      "technique": "T1562.008",
+      "tactic": "Defense Evasion",
+      "purple": {
+        "outcome": "SUCCEEDED",
+        "detail": "stopped purple-trail",
+        "telemetry": "NONE"
+      },
+      "hardened": {
+        "outcome": "DENIED",
+        "detail": "User: arn:aws:iam::863999168850:user/dev-svc is not authorized to perform: cloudtrail:StopLogging on resource: arn:aws:cloudtrail:us-east-1:863999168850:trail/hardened-trail with an explicit deny in a service control policy: arn:aws:organizations::111111111111:policy/o-91dd1f4924/service_control_policy/p-271ff448",
+        "prevented_by": "SCP",
+        "telemetry": "-"
+      },
+      "attack_start": "2026-11-06T01:46:48.964Z",
+      "attack_end": "2026-11-06T01:47:01.119Z",
+      "detected": true,
+      "mttd": 0.133,
+      "alert": "Trail observed not logging: purple-trail (TrailStateObserved by aegis-detector)",
+      "alert_source": "python-engine",
+      "alert_rule": "AEG-EVAS-002",
+      "verdict": "PREVENTED+DETECTED"
+    },
+    {
+      "id": "S05",
+      "name": "Open a security group to the world",
+      "technique": "T1562.007",
+      "tactic": "Defense Evasion",
+      "purple": {
+        "outcome": "SUCCEEDED",
+        "detail": "opened 0.0.0.0/0:22 on sg-386f6c2cdb9be22eb",
+        "telemetry": "FULL"
+      },
+      "hardened": {
+        "outcome": "SUCCEEDED",
+        "detail": "opened 0.0.0.0/0:22 on sg-ebc8576808e51ae8e",
+        "telemetry": "-"
+      },
+      "attack_start": "2026-11-06T01:47:01.119Z",
+      "attack_end": "2026-11-06T01:47:01.257Z",
+      "detected": true,
+      "mttd": 3.186,
+      "alert": "Security group opened to the internet: sg-386f6c2cdb9be22eb (AuthorizeSecurityGroupIngress by dev-svc)",
+      "alert_source": "python-engine",
+      "alert_rule": "AEG-EVAS-003",
+      "verdict": "DETECTED"
+    },
+    {
+      "id": "S06",
+      "name": "Backdoor bucket policy",
+      "technique": "T1537",
+      "tactic": "Exfiltration",
+      "purple": {
+        "outcome": "SUCCEEDED",
+        "detail": "granted 999999999999 read access on purple-data-555555555555",
+        "telemetry": "FULL"
+      },
+      "hardened": {
+        "outcome": "SUCCEEDED",
+        "detail": "granted 999999999999 read access on hardened-data-863999168850",
+        "telemetry": "-"
+      },
+      "attack_start": "2026-11-06T01:47:01.258Z",
+      "attack_end": "2026-11-06T01:47:01.325Z",
+      "detected": true,
+      "mttd": 3.047,
+      "alert": "Bucket policy changed, body not recorded so the principal cannot be checked: purple-data-555555555555 (PutBucketPolicy by dev-svc)",
+      "alert_source": "python-engine",
+      "alert_rule": "AEG-EXFIL-001",
+      "verdict": "DETECTED"
+    },
+    {
+      "id": "S07",
+      "name": "Make the data bucket public",
+      "technique": "T1530",
+      "tactic": "Collection",
+      "purple": {
+        "outcome": "SUCCEEDED",
+        "detail": "disabled BPA and set public-read ACL on purple-data-555555555555",
+        "telemetry": "FULL"
+      },
+      "hardened": {
+        "outcome": "SUCCEEDED",
+        "detail": "disabled BPA and set public-read ACL on hardened-data-863999168850",
+        "telemetry": "-"
+      },
+      "attack_start": "2026-11-06T01:47:01.326Z",
+      "attack_end": "2026-11-06T01:47:01.444Z",
+      "detected": true,
+      "mttd": 2.979,
+      "alert": "Bucket exposed to the public: purple-data-555555555555 (Block Public Access relaxed) (PutPublicAccessBlock by dev-svc)",
+      "alert_source": "python-engine",
+      "alert_rule": "AEG-EXFIL-002",
+      "verdict": "DETECTED"
+    },
+    {
+      "id": "S08",
+      "name": "Use a leaked access key",
+      "technique": "T1078.004",
+      "tactic": "Initial Access",
+      "purple": {
+        "outcome": "SUCCEEDED",
+        "detail": "used dev-svc key as arn:aws:iam::555555555555:user/dev-svc from an unfamiliar client",
+        "telemetry": "FULL"
+      },
+      "hardened": {
+        "outcome": "SUCCEEDED",
+        "detail": "used dev-svc key as arn:aws:iam::863999168850:user/dev-svc from an unfamiliar client",
+        "telemetry": "-"
+      },
+      "attack_start": "2026-11-06T01:47:01.444Z",
+      "attack_end": "2026-11-06T01:47:01.587Z",
+      "detected": false,
+      "mttd": null,
+      "alert": null,
+      "alert_source": null,
+      "alert_rule": null,
+      "verdict": "NEITHER"
+    },
+    {
+      "id": "S09",
+      "name": "Privilege escalation via policy versions",
+      "technique": "T1098",
+      "tactic": "Privilege Escalation",
+      "purple": {
+        "outcome": "SUCCEEDED",
+        "detail": "added Action:* to arn:aws:iam::555555555555:policy/intern-policy (v2); post-escalation call denied: An error occurred (AccessDenied) when calling the ListUsers operation: User: arn:aws:iam::555555555555:user/intern is not authorized to perform: iam:ListUsers on resource: * because no identity-based policy allows the iam:ListUsers action",
+        "telemetry": "FULL"
+      },
+      "hardened": {
+        "outcome": "DENIED",
+        "detail": "User: arn:aws:iam::863999168850:user/intern is not authorized to perform: iam:CreatePolicyVersion on resource: arn:aws:iam::863999168850:policy/intern-policy because no identity-based policy allows the iam:CreatePolicyVersion action",
+        "prevented_by": "IAM (boundary or policy)",
+        "telemetry": "-"
+      },
+      "attack_start": "2026-11-06T01:47:01.587Z",
+      "attack_end": "2026-11-06T01:47:01.760Z",
+      "detected": true,
+      "mttd": 2.718,
+      "alert": "IAM policy rewritten by a non-administrator: intern-policy (CreatePolicyVersion by intern)",
+      "alert_source": "python-engine",
+      "alert_rule": "AEG-PRIV-001",
+      "verdict": "PREVENTED+DETECTED"
+    },
+    {
+      "id": "S10",
+      "name": "Schedule KMS key deletion",
+      "technique": "T1485",
+      "tactic": "Impact",
+      "purple": {
+        "outcome": "SUCCEEDED",
+        "detail": "scheduled deletion of d19544b5-0e0a-42a4-a354-d637a90a88c1 in 7 days",
+        "telemetry": "FULL"
+      },
+      "hardened": {
+        "outcome": "SUCCEEDED",
+        "detail": "scheduled deletion of 140953db-697a-4ee6-a2a1-4d094f44b7bc in 7 days",
+        "telemetry": "-"
+      },
+      "attack_start": "2026-11-06T01:47:01.760Z",
+      "attack_end": "2026-11-06T01:47:01.909Z",
+      "detected": true,
+      "mttd": 2.545,
+      "alert": "KMS key scheduled for deletion: d19544b5-0e0a-42a4-a354-d637a90a88c1 (ScheduleKeyDeletion by dev-svc)",
+      "alert_source": "python-engine",
+      "alert_rule": "AEG-IMPACT-001",
+      "verdict": "DETECTED"
+    },
+    {
+      "id": "S11",
+      "name": "Harvest secrets",
+      "technique": "T1555.006",
+      "tactic": "Credential Access",
+      "purple": {
+        "outcome": "SUCCEEDED",
+        "detail": "read secret purple/db-password",
+        "telemetry": "FULL"
+      },
+      "hardened": {
+        "outcome": "SUCCEEDED",
+        "detail": "read secret hardened/db-password",
+        "telemetry": "-"
+      },
+      "attack_start": "2026-11-06T01:47:01.909Z",
+      "attack_end": "2026-11-06T01:47:02.048Z",
+      "detected": true,
+      "mttd": 2.397,
+      "alert": "Secret read by an unexpected identity: purple/db-password (GetSecretValue by dev-svc)",
+      "alert_source": "python-engine",
+      "alert_rule": "AEG-CRED-001",
+      "verdict": "DETECTED"
+    },
+    {
+      "id": "S12",
+      "name": "Suspend versioning and delete objects",
+      "technique": "T1490",
+      "tactic": "Impact",
+      "purple": {
+        "outcome": "SUCCEEDED",
+        "detail": "suspended versioning and deleted 12 objects in purple-data-555555555555",
+        "telemetry": "FULL"
+      },
+      "hardened": {
+        "outcome": "SUCCEEDED",
+        "detail": "suspended versioning and deleted 12 objects in hardened-data-863999168850",
+        "telemetry": "-"
+      },
+      "attack_start": "2026-11-06T01:47:02.048Z",
+      "attack_end": "2026-11-06T01:47:02.567Z",
+      "detected": true,
+      "mttd": 2.258,
+      "alert": "Bucket versioning suspended: purple-data-555555555555 (PutBucketVersioning by dev-svc)",
+      "alert_source": "python-engine",
+      "alert_rule": "AEG-IMPACT-002",
+      "verdict": "DETECTED"
+    }
+  ]
+}

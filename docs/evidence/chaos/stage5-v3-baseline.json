@@ -1,0 +1,31 @@
+[
+  {
+    "experiment": "detector-kill",
+    "title": "Kill the detector, attack while it is down, restart it",
+    "hypothesis": "A killed detector is noticed within one heartbeat limit and restarted by the watchdog. With a checkpoint it reads the log files delivered while it was down, so the attack made during the outage is still detected. Without one it starts 'from now' and that attack is never seen.",
+    "resume": false,
+    "outage_noticed_s": 0.51,
+    "restart_ok": true,
+    "recovered_s": 11.06,
+    "detector_start": "detector up: source=s3, accounts=purple, interval=3.0s, from now, 14 rules",
+    "gap_event_detected": false,
+    "gap_mttd_s": null,
+    "verdict": "EVENT LOST",
+    "notes": "the attack made while the detector was down was never detected: the outage window is a blind spot",
+    "finished": "2026-11-06T02:00:43Z"
+  },
+  {
+    "experiment": "responder-kill-pending",
+    "title": "Kill the responder while a person is deciding",
+    "hypothesis": "A responder killed with an approval pending must, after restart, ask again and contain the incident. Without recovery the ledger's claim makes the finding look 'already handled' and it is dropped.",
+    "resume": false,
+    "outage_noticed_s": 0.0,
+    "restart_ok": true,
+    "recovered_s": 2.02,
+    "responder_start": null,
+    "asked_again_s": null,
+    "verdict": "EVENT LOST",
+    "notes": "after the restart nobody was asked again: the incident was silently dropped",
+    "finished": "2026-11-06T02:02:12Z"
+  }
+]

@@ -1,0 +1,14 @@
+{
+  "window_h": 24,
+  "slos": [
+    {"id": "detection-availability", "title": "Detection path is up", "kind": "availability",
+     "components": ["localstack", "detector"], "target": 0.99,
+     "why": "If the detector or its log source is down, attacks in that window are invisible until it returns."},
+    {"id": "detection-freshness", "title": "Findings within 30 s of the event", "kind": "freshness",
+     "threshold_s": 30, "target": 0.95,
+     "why": "Stage 3 measured MTTD of 0.4 to 14 s, dominated by CloudTrail log delivery."},
+    {"id": "response-machine-time", "title": "Containment machine time within 5 s", "kind": "response",
+     "metric": "machine_s", "threshold_s": 5, "target": 0.95,
+     "why": "Approval wait is a person's time and is excluded. Stage 4 measured 0.2 to 0.3 s."}
+  ]
+}

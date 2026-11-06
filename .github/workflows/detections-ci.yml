@@ -7,9 +7,12 @@ on:
       - "siem/**"
       - "report/**"
       - "response/**"
+      - "ops/**"
       - "docker-compose.siem.yml"
       - "cloudpurple/attacks/**"
       - "docs/detection-contract.md"
+      - "docs/ops-contract.md"
+      - "docs/runbooks/**"
       - "docs/known-limits.json"
   push:
     branches: [main]
@@ -18,6 +21,7 @@ on:
       - "siem/**"
       - "report/**"
       - "response/**"
+      - "ops/**"
   workflow_dispatch:
 
 permissions:
@@ -65,3 +69,14 @@ jobs:
       - run: python3 -m pytest response/tests -q
       - name: the Lambda package builds
         run: bash response/package_lambda.sh
+
+  ops:
+    name: watchdog, SLOs, restore drill, chaos logic, checkpoint, runbooks (pytest + moto, no LocalStack)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r ops/requirements.txt -r detections/requirements.txt -r response/requirements.txt
+      - run: python3 -m pytest ops/tests -q

@@ -1,0 +1,59 @@
+{
+  "label": "stage4-v7",
+  "generated": "2026-11-06 01:48 UTC",
+  "summary": {
+    "pairs": 2,
+    "contained": 2,
+    "mean_attack_to_contained_s": 12.285,
+    "mean_machine_s": 0.21000000000000002,
+    "mean_mttd_s": 12.08,
+    "worst_attack_to_contained_s": 14.47
+  },
+  "meta": {
+    "purple_account": "555555555555",
+    "approver": "auto",
+    "endpoint": "http://localhost:4566",
+    "audit_chain": "14 records, chain intact",
+    "note": "approval simulated"
+  },
+  "rows": [
+    {
+      "playbook": "leaked_key",
+      "scenario": "S11",
+      "technique": "T1555.006",
+      "name": "Harvest secrets",
+      "attack_start": "2026-11-06T01:47:37.098Z",
+      "responded": true,
+      "approver": "auto",
+      "status": "CONTAINED",
+      "state_verified": true,
+      "alert_rule": "AEG-CRED-001",
+      "mttd_s": 9.89,
+      "human_wait_s": 0.0,
+      "attack_to_contained_s": 10.1,
+      "detected_to_contained_s": 0.22,
+      "machine_s": 0.22,
+      "attack_to_verified_s": 10.14,
+      "contained": true
+    },
+    {
+      "playbook": "public_bucket",
+      "scenario": "S07",
+      "technique": "T1530",
+      "name": "Make the data bucket public",
+      "attack_start": "2026-11-06T01:47:47.858Z",
+      "responded": true,
+      "approver": "auto",
+      "status": "CONTAINED",
+      "state_verified": true,
+      "alert_rule": "AEG-EXFIL-002",
+      "mttd_s": 14.27,
+      "human_wait_s": 0.0,
+      "attack_to_contained_s": 14.47,
+      "detected_to_contained_s": 0.2,
+      "machine_s": 0.2,
+      "attack_to_verified_s": 14.5,
+      "contained": true
+    }
+  ]
+}

@@ -44,7 +44,10 @@ resource "aws_instance" "this" {
     volume_size = 8
   }
 
-  tags = { Name = "${var.name_prefix}-app-1" }
+  tags = {
+    Name          = "${var.name_prefix}-app-1"
+    "Patch Group" = var.patch_group # the patching module's maintenance window targets this tag
+  }
 
   lifecycle {
     # LocalStack reports a public IP even though none was requested, which would

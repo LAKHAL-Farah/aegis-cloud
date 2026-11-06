@@ -1,0 +1,32 @@
+[
+  {
+    "experiment": "detector-kill",
+    "title": "Kill the detector, attack while it is down, restart it",
+    "hypothesis": "A killed detector is noticed within one heartbeat limit and restarted by the watchdog. With a checkpoint it reads the log files delivered while it was down, so the attack made during the outage is still detected. Without one it starts 'from now' and that attack is never seen.",
+    "resume": true,
+    "outage_noticed_s": 0.5,
+    "restart_ok": true,
+    "recovered_s": 10.56,
+    "detector_start": "detector up: source=s3, accounts=purple, interval=3.0s, RESUMED 2 source(s) from checkpoint, 14 rules",
+    "gap_event_detected": true,
+    "gap_mttd_s": 64.211,
+    "verdict": "SURVIVED",
+    "notes": "the attack made while the detector was down was detected after recovery",
+    "finished": "2026-11-06T02:05:09Z"
+  },
+  {
+    "experiment": "responder-kill-pending",
+    "title": "Kill the responder while a person is deciding",
+    "hypothesis": "A responder killed with an approval pending must, after restart, ask again and contain the incident. Without recovery the ledger's claim makes the finding look 'already handled' and it is dropped.",
+    "resume": true,
+    "outage_noticed_s": 0.0,
+    "restart_ok": true,
+    "recovered_s": 2.02,
+    "responder_start": null,
+    "asked_again_s": 8.57,
+    "contained_after_approval_s": 10.15,
+    "verdict": "SURVIVED",
+    "notes": "interrupted mid-approval, asked again after restart, contained and verified",
+    "finished": "2026-11-06T02:05:50Z"
+  }
+]

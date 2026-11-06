@@ -32,3 +32,9 @@ variable "enable_detailed_monitoring" {
   type        = bool
   default     = true
 }
+
+variable "patch_group" {
+  description = "Value of the `Patch Group` tag. Must match the patching module's patch_group"
+  type        = string
+  default     = "aegis-workload"
+}

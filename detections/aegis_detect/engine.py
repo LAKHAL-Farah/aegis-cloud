@@ -30,6 +30,15 @@ class Engine:
         while len(self._seen) > self._max_seen:
             self._seen.popitem(last=False)
 
+    def state(self, keep: int = 5000) -> dict:
+        """What a restarted engine needs to not repeat itself: recent event ids and the cooldown clock.
+        Rule windows (sliding-window correlation) are NOT saved; see ADR-0018."""
+        return {"seen": list(self._seen)[-keep:], "last": dict(self._last)}
+
+    def restore(self, state: dict) -> None:
+        self.mark_seen(state.get("seen", []))
+        self._last.update({k: float(v) for k, v in state.get("last", {}).items()})
+
     def process(self, events: Iterable[Event]) -> list[Detection]:
         out: list[Detection] = []
         for ev in sorted(events, key=lambda e: e.time):

@@ -33,3 +33,12 @@ run "root_volume_encrypted" {
     error_message = "Root volume must be encrypted."
   }
 }
+
+run "instance_is_in_the_patch_group" {
+  command = plan
+
+  assert {
+    condition     = aws_instance.this.tags["Patch Group"] == "aegis-workload"
+    error_message = "Without the tag the maintenance window patches nothing."
+  }
+}

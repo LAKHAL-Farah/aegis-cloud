@@ -1,0 +1,10 @@
+{
+  "objects": 6,
+  "restored": 6,
+  "verified": 6,
+  "mismatches": [],
+  "rto_s": 3.434645414352417,
+  "passed": true,
+  "bucket": "aegis-data-444444444444",
+  "generated": "2026-11-06 01:54 UTC"
+}

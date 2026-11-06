@@ -1,0 +1,42 @@
+# CloudPurple scorecard: stage3-v7
+
+_Generated 2026-11-06 01:18 UTC_
+
+**Detected: 11 of 11 scorable (12 run, S08 excluded: LocalStack limitation)  |  Prevented on hardened twin: 3 of 12  |  Neither: 1  |  Errored: 0**
+
+Mean time to detect: 2.5 s
+
+Other alerts raised on purple during the run (not credited to a scenario): 1 (AEG-IMPACT-003 x1)
+
+| ID | ATT&CK | Scenario | Purple (vulnerable) | Hardened | Telemetry | Detected | MTTD | Verdict |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| S01 | T1580 | Cloud infrastructure discovery | SUCCEEDED | SUCCEEDED | FULL | yes | 5.7 s | DETECTED |
+| S02 | T1530 | S3 data exfiltration | SUCCEEDED | SUCCEEDED | DATA-EVENT (lookup-events cannot see it; check the trail's S3 destination manually) | yes | 0.5 s | DETECTED |
+| S03 | T1136.003 | Backdoor IAM user + access key | SUCCEEDED | DENIED (IAM (boundary or policy)) | FULL | yes | 3.3 s | PREVENTED+DETECTED |
+| S04 | T1562.008 | Disable CloudTrail logging | SUCCEEDED | DENIED (SCP) | NONE | yes | 0.0 s | PREVENTED+DETECTED |
+| S05 | T1562.007 | Open a security group to the world | SUCCEEDED | SUCCEEDED | FULL | yes | 3.0 s | DETECTED |
+| S06 | T1537 | Backdoor bucket policy | SUCCEEDED | SUCCEEDED | FULL | yes | 2.9 s | DETECTED |
+| S07 | T1530 | Make the data bucket public | SUCCEEDED | SUCCEEDED | FULL | yes | 2.8 s | DETECTED |
+| S08 | T1078.004 | Use a leaked access key | SUCCEEDED | SUCCEEDED | FULL | no | - | NEITHER (excluded) |
+| S09 | T1098 | Privilege escalation via policy versions | SUCCEEDED | DENIED (IAM (boundary or policy)) | FULL | yes | 2.6 s | PREVENTED+DETECTED |
+| S10 | T1485 | Schedule KMS key deletion | SUCCEEDED | SUCCEEDED | FULL | yes | 2.4 s | DETECTED |
+| S11 | T1555.006 | Harvest secrets | SUCCEEDED | SUCCEEDED | FULL | yes | 2.2 s | DETECTED |
+| S12 | T1490 | Suspend versioning and delete objects | SUCCEEDED | SUCCEEDED | FULL | yes | 2.1 s | DETECTED |
+
+## Notes
+
+* S08 is excluded from the scorable count: LocalStack records userAgent as console.amazonaws.com for every client, so a new-client signal never reaches CloudTrail (docs/evidence/telemetry-probe.md). Not detectable here; detectable on real AWS.
+* S01 matched alert: Cloud infrastructure discovery burst: 4 calls across 3 services (DescribeSecurityGroups by dev-svc)
+* S02 matched alert: Bulk S3 object download: 10 objects from purple-data-555555555555 (GetObject by dev-svc)
+* S03 hardened: DENIED: User: arn:aws:iam::307368419711:user/dev-svc is not authorized to perform: iam:CreateUser on resource: arn:aws:iam::307368419711:user/backdoor-08847e1a-S03 because no identity-based policy allows the 
+* S03 matched alert: IAM user created: backdoor-08847e1a-S03 (CreateUser by dev-svc)
+* S04 hardened: DENIED: User: arn:aws:iam::307368419711:user/dev-svc is not authorized to perform: cloudtrail:StopLogging on resource: arn:aws:cloudtrail:us-east-1:307368419711:trail/hardened-trail with an explicit deny in a
+* S04 matched alert: Trail observed not logging: purple-trail (TrailStateObserved by aegis-detector)
+* S05 matched alert: Security group opened to the internet: sg-a954083757f7c81b3 (AuthorizeSecurityGroupIngress by dev-svc)
+* S06 matched alert: Bucket policy changed, body not recorded so the principal cannot be checked: purple-data-555555555555 (PutBucketPolicy by dev-svc)
+* S07 matched alert: Bucket exposed to the public: purple-data-555555555555 (Block Public Access relaxed) (PutPublicAccessBlock by dev-svc)
+* S09 hardened: DENIED: User: arn:aws:iam::307368419711:user/intern is not authorized to perform: iam:CreatePolicyVersion on resource: arn:aws:iam::307368419711:policy/intern-policy because no identity-based policy allows th
+* S09 matched alert: IAM policy rewritten by a non-administrator: intern-policy (CreatePolicyVersion by intern)
+* S10 matched alert: KMS key scheduled for deletion: 38684e82-b5a7-4dd3-ad98-b0888f9dfdbc (ScheduleKeyDeletion by dev-svc)
+* S11 matched alert: Secret read by an unexpected identity: purple/db-password (GetSecretValue by dev-svc)
+* S12 matched alert: Bucket versioning suspended: purple-data-555555555555 (PutBucketVersioning by dev-svc)
