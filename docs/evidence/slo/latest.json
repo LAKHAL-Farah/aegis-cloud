@@ -3,26 +3,26 @@
     "id": "detection-availability",
     "title": "Detection path is up",
     "target": 0.99,
-    "good": 119,
-    "total": 160,
-    "sli": 0.74375,
-    "status": "BREACHED",
-    "budget_left": -24.625,
-    "note": "",
+    "good": 2,
+    "total": 2,
+    "sli": 1.0,
+    "status": "OK",
+    "budget_left": 1.0,
+    "note": "only 2 events: not enough to say the target holds",
     "extra": {}
   },
   {
     "id": "detection-freshness",
     "title": "Findings within 30 s of the event",
     "target": 0.95,
-    "good": 2,
-    "total": 13,
-    "sli": 0.15384615384615385,
-    "status": "BREACHED",
-    "budget_left": -15.923077,
-    "note": "only 13 events: not enough to say the target holds",
+    "good": 0,
+    "total": 0,
+    "sli": null,
+    "status": "NO DATA",
+    "budget_left": null,
+    "note": "no events in the window",
     "extra": {
-      "worst_s": 109.804
+      "worst_s": 0.0
     }
   },
   {

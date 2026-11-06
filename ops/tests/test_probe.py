@@ -6,6 +6,7 @@ from moto import mock_aws
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
 import probe_ops as probe  # noqa: E402
+import probe_filters  # noqa: E402,F401
 
 
 def moto_client(service, account):
@@ -32,3 +33,16 @@ def test_a_crashing_probe_becomes_a_verdict():
 def test_render_is_a_markdown_table():
     md = probe.render([("a", probe.WORKS, "d")])
     assert "| a | **WORKS** | d |" in md
+
+
+def test_filter_ladder_reads_the_real_cis_patterns_and_runs():
+    import probe_filters as pf  # noqa
+    rows = pf.ladder()
+    names = [n for n, _ in rows]
+    assert any("REAL CIS 4.5" in n for n in names)
+    real = dict(rows)["REAL CIS 4.5 (CloudTrail changes)"]
+    assert "StopLogging" in real and '\\"' not in real            # un-escaped from the HCL string
+    with mock_aws():
+        res = pf.run(boto3.client("logs", region_name="us-east-1"), boto3.client("cloudwatch", region_name="us-east-1"), wait_s=0)
+    assert len(res) == len(rows) and all(isinstance(ok, bool) for _, ok, _ in res)
+    assert "| Pattern shape | Matched? |" in pf.render(res)

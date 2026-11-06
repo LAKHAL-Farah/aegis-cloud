@@ -17,7 +17,7 @@ here (`make ops-probe` records which). A number computed by a feature that does 
    `treat_missing_data = breaching` so that a dead watchdog also alarms.
 3. **CIS section 4 (4.1 to 4.15) is Terraform:** the trail delivers to a KMS-encrypted log group, 15 metric filters and 15
    alarms notify an encrypted SNS topic. It is proven by `terraform test` and a live "definitions exist" check. It is NOT
-   claimed to fire on LocalStack; our own detectors cover the same event families there (ADR-0002).
+   claimed to fire on LocalStack (measured: CloudTrail does not deliver to the log group, and LocalStack matches only single quoted-equality filter patterns, not the compound CIS ones); our own detectors cover the same event families there (ADR-0002).
 4. **The restore proof is an S3 versioning drill** (`make ops-drill`): write, destroy both ways (delete and overwrite),
    restore the last good version, verify every byte, report the RTO. AWS Backup (vault, plan, selection) and SSM Patch
    Manager (baseline, patch group, window, task) are Terraform modules behind `enable_backup` / `enable_patching`,

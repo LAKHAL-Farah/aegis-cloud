@@ -1,6 +1,8 @@
 import json
 import os
 
+from pathlib import Path
+
 from aegis_ops.components import Stack
 from aegis_ops.probes import DockerProbe, HeartbeatProbe, HttpProbe, Result
 from aegis_ops.watchdog import CloudWatchPublisher, Healer, Watchdog
@@ -164,3 +166,61 @@ def test_fresh_state_deletes_the_checkpoint_and_archives_the_responder_state(tmp
     dest = s.fresh_state("t1")
     assert not (s.ops / "detector-state.json").exists() and not s.response_state.exists()
     assert (dest / "ledger.json").exists()                               # kept as evidence
+
+
+def test_no_healing_while_a_person_has_the_stack_stopped(tmp_path):
+    calls = []
+    class P:
+        component = "a"
+        def check(self):
+            return Result("a", False, "gone")
+    wd = Watchdog([P()], tmp_path, healers={"a": Healer("a", lambda: calls.append(1) or True)}, clock=Clock(),
+                  maintenance=lambda: True)
+    assert wd.heal(wd.check()) == [] and calls == []
+
+
+def test_a_killed_child_that_nobody_reaped_is_not_alive():
+    """The zombie case measured on the live run: os.kill(pid, 0) says alive, the process is dead."""
+    import signal, subprocess, time
+    from aegis_ops.probes import pid_alive
+    child = subprocess.Popen(["sleep", "60"])
+    assert pid_alive(child.pid)
+    os.kill(child.pid, signal.SIGKILL)
+    time.sleep(0.3)
+    assert not pid_alive(child.pid)          # a zombie until child.wait()
+    child.wait()
+    assert not pid_alive(child.pid)
+
+
+def test_gave_up_is_announced_once_per_episode(tmp_path):
+    clock = Clock(0.0)
+    h = Healer("d", lambda: True, max_restarts=1, window_s=1000, clock=clock)
+    class Down:
+        component = "d"
+        def check(self): return Result("d", False, "gone")
+    class Up:
+        component = "d"
+        def check(self): return Result("d", True, "ok")
+    wd = Watchdog([Down()], tmp_path, healers={"d": h}, clock=clock)
+    first = wd.heal(wd.check())              # restart
+    spam = [wd.heal(wd.check()) for _ in range(5)]
+    actions = [e["action"] for e in first + [x for batch in spam for x in batch]]
+    assert actions == ["restart", "gave-up"]                       # one announcement, not five
+    wd.probes = [Up()]
+    wd.heal(wd.check())                                            # recovered: the episode is over
+    assert h.announced is False
+
+
+def test_stale_or_foreign_pid_files_do_not_count_as_a_running_watchdog(tmp_path):
+    import importlib.util, sys
+    spec = importlib.util.spec_from_file_location("ops_cli", Path(__file__).resolve().parents[1] / "ops.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    pf = tmp_path / "watchdog.pid"
+    assert mod.watchdog_running(pf) is None                       # no file
+    pf.write_text("not a number")
+    assert mod.watchdog_running(pf) is None
+    pf.write_text("99999999")
+    assert mod.watchdog_running(pf) is None                       # no such process
+    pf.write_text(str(os.getpid()))
+    assert mod.watchdog_running(pf) is None                       # alive, but it is pytest, not a watchdog

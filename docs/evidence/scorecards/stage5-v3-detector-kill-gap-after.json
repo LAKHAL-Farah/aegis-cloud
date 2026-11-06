@@ -1,0 +1,54 @@
+{
+  "label": "stage5-v3-detector-kill-gap-after",
+  "run_id": "5f468f85",
+  "generated": "2026-11-06 02:05 UTC",
+  "summary": {
+    "scorable": 1,
+    "excluded": [],
+    "detected_scorable": 1,
+    "total": 1,
+    "errored": 0,
+    "succeeded_on_purple": 1,
+    "detected": 1,
+    "prevented": 0,
+    "neither": 0,
+    "mean_mttd": 64.211,
+    "other_alerts": 0,
+    "other_by_rule": {}
+  },
+  "meta": {
+    "purple_account": "555555555555",
+    "hardened_account": "863999168850",
+    "window_s": 120,
+    "settle_s": 0,
+    "as_root": false,
+    "alert_source": null,
+    "rescored_from": "stage5-v3-detector-kill-gap"
+  },
+  "rows": [
+    {
+      "id": "S01",
+      "name": "Cloud infrastructure discovery",
+      "technique": "T1580",
+      "tactic": "Discovery",
+      "purple": {
+        "outcome": "SUCCEEDED",
+        "detail": "enumerated s3, ec2 instances, iam users, security groups",
+        "telemetry": "FULL"
+      },
+      "hardened": {
+        "outcome": "SUCCEEDED",
+        "detail": "enumerated s3, ec2 instances, iam users, security groups",
+        "telemetry": "-"
+      },
+      "attack_start": "2026-11-06T02:03:36.216Z",
+      "attack_end": "2026-11-06T02:03:41.738Z",
+      "detected": true,
+      "mttd": 64.211,
+      "alert": "Cloud infrastructure discovery burst: 4 calls across 3 services (DescribeSecurityGroups by dev-svc)",
+      "alert_source": "python-engine",
+      "alert_rule": "AEG-DISC-001",
+      "verdict": "DETECTED"
+    }
+  ]
+}

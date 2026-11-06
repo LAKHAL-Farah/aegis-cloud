@@ -43,6 +43,22 @@ def _client(service: str, account: str = WORKLOAD):
                         aws_access_key_id=account, aws_secret_access_key="test")
 
 
+def watchdog_running(pid_file: Path) -> int | None:
+    """The pid of a live watchdog, or None. A stale pid file (the watchdog was killed, or the pid was reused by some
+    other process) must not block an experiment, so the process has to actually be an `ops.py watchdog`."""
+    try:
+        pid = int(pid_file.read_text().strip())
+    except (OSError, ValueError):
+        return None
+    if not pid_alive(pid):
+        return None
+    try:
+        cmd = Path(f"/proc/{pid}/cmdline").read_bytes().replace(b"\0", b" ").decode(errors="replace")
+    except OSError:
+        return pid                      # no /proc: trust the pid
+    return pid if "ops.py" in cmd and "watchdog" in cmd else None
+
+
 def _event(rec: dict) -> None:
     path = ROOT / "build" / "ops" / "events.jsonl"
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -58,6 +74,7 @@ def stack(args) -> Stack:
 def cmd_up(args) -> int:
     _guard()
     s = stack(args)
+    _event({"action": "maintenance-end"})
     for name in ("detector", "responder"):
         print(f"{name}: {'up' if s.start(name) else 'FAILED to start (see build/ops/%s.log)' % name}")
     return 0 if all(s.probe(n).check().up for n in ("detector", "responder")) else 1
@@ -65,6 +82,7 @@ def cmd_up(args) -> int:
 
 def cmd_down(args) -> int:
     s = stack(args)
+    _event({"action": "maintenance-start"})     # stopped on purpose: not downtime, and the watchdog must not restart it
     for name in ("detector", "responder"):
         print(f"{name}: {'stopped' if s.kill(name, signal.SIGTERM) else 'was not running'}")
     return 0
@@ -83,7 +101,8 @@ def cmd_watchdog(args) -> int:
     pub = CloudWatchPublisher(_client("cloudwatch", "333333333333")) if args.publish else None
     s.ops.mkdir(parents=True, exist_ok=True)
     (s.ops / "watchdog.pid").write_text(str(os.getpid()))
-    wd = Watchdog(s.probes(), s.ops, healers=s.healers() if args.heal else None, publisher=pub)
+    wd = Watchdog(s.probes(), s.ops, healers=s.healers() if args.heal else None, publisher=pub,
+                  maintenance=lambda: slo.in_maintenance(s.ops / "events.jsonl"))
     stop = {"flag": False}
     signal.signal(signal.SIGTERM, lambda *_: stop.update(flag=True))
     signal.signal(signal.SIGINT, lambda *_: stop.update(flag=True))
@@ -99,7 +118,10 @@ def cmd_watchdog(args) -> int:
             wd.heal(res)
         show(res)
         return 0
-    wd.run(args.interval, lambda: stop["flag"], heal=args.heal, on_check=show)
+    try:
+        wd.run(args.interval, lambda: stop["flag"], heal=args.heal, on_check=show)
+    finally:
+        (s.ops / "watchdog.pid").unlink(missing_ok=True)      # a clean exit leaves no pid file behind
     return 0
 
 
@@ -108,12 +130,19 @@ def cmd_slo(args) -> int:
     if args.window_h:
         config["window_h"] = args.window_h
     ops_dir = ROOT / "build" / "ops"
+    epoch_file = ops_dir / "slo-epoch"
+    if args.reset:
+        ops_dir.mkdir(parents=True, exist_ok=True)
+        epoch_file.write_text(str(time.time()))
+        print("SLO history before now is ignored from here on (nothing was deleted). Run the stack, then `make ops-slo`.")
+        return 0
+    epoch = float(epoch_file.read_text()) if epoch_file.exists() else 0.0
     results = slo.evaluate(config, health_log=ops_dir / "health.jsonl", audit_path=Path(args.audit),
-                           findings_dir=ROOT / "build" / "findings", now=time.time(), events_log=ops_dir / "events.jsonl")
-    left_out = len(slo.chaos_windows(ops_dir / "events.jsonl"))
+                           findings_dir=ROOT / "build" / "findings", now=time.time(), events_log=ops_dir / "events.jsonl", epoch=epoch)
+    left_out = len(slo.chaos_windows(ops_dir / "events.jsonl")) + len(slo.maintenance_windows(ops_dir / "events.jsonl"))
     md = slo.render_markdown(results, config["window_h"], slo.now_stamp())
     if left_out:
-        md += f"\n{left_out} chaos window(s) were excluded: those outages were caused on purpose.\n"
+        md += f"\n{left_out} chaos window(s) (chaos runs, or the stack stopped on purpose) were excluded.\n"
     print(md)
     if args.write:
         out = ROOT / "docs" / "evidence" / "slo"
@@ -143,10 +172,10 @@ def cmd_chaos(args) -> int:
         return 0
     _guard()
     ids = list(chaos.EXPERIMENTS) if args.id in (None, "all") else [args.id]
-    other = (ROOT / "build" / "ops" / "watchdog.pid")
-    if other.exists() and pid_alive(other.read_text().strip() or 0):
-        sys.exit(f"a watchdog is running (pid {other.read_text().strip()}): it would restart the components behind the "
-                 "experiment's back and invalidate it. Stop it (Ctrl-C in its terminal) and run again.")
+    running = watchdog_running(ROOT / "build" / "ops" / "watchdog.pid")
+    if running:
+        sys.exit(f"a watchdog is running (pid {running}): it would restart the components behind the experiment's back "
+                 f"and invalidate it. Stop it (Ctrl-C in its terminal, or `kill {running}`) and run again.")
     cfg = chaos.Config(resume=not args.no_resume)
     results = []
     for exp_id in ids:
@@ -197,6 +226,7 @@ def main(argv=None) -> int:
     s.add_argument("--window-h", type=float, default=None)
     s.add_argument("--audit", default=str(ROOT / "build" / "ops" / "response" / "audit.jsonl"))
     s.add_argument("--write", action="store_true", help="write docs/evidence/slo/latest.*")
+    s.add_argument("--reset", action="store_true", help="start measuring from now: ignore all earlier history (nothing is deleted)")
     s.add_argument("--strict", action="store_true", help="exit 1 when an SLO is breached (for CI or cron)")
     s.set_defaults(fn=cmd_slo)
     d = sub.add_parser("drill")

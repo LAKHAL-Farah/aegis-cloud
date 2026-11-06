@@ -47,6 +47,7 @@ provider "aws" {
 
   endpoints {
     apigateway     = var.localstack_endpoint
+    backup         = var.localstack_endpoint
     cloudformation = var.localstack_endpoint
     cloudtrail     = var.localstack_endpoint
     cloudwatch     = var.localstack_endpoint

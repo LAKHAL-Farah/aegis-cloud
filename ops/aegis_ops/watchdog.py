@@ -29,6 +29,7 @@ class Healer:
     def __init__(self, component: str, restart, max_restarts: int = 3, window_s: float = 600.0, clock=time.time):
         self.component, self.restart, self.max, self.window, self.clock = component, restart, max_restarts, window_s, clock
         self._times: deque[float] = deque()
+        self.announced = False          # "gave-up" is said once per episode, not every tick
 
     def allowed(self) -> bool:
         now = self.clock()
@@ -36,10 +37,17 @@ class Healer:
             self._times.popleft()
         return len(self._times) < self.max
 
-    def attempt(self) -> tuple[str, bool, str]:
-        """(action, ok, detail). action is "restart" or "gave-up"."""
+    def reset(self) -> None:
+        self.announced = False
+
+    def attempt(self) -> tuple[str, bool, str] | None:
+        """(action, ok, detail), or None when it already said "gave-up" and nothing has changed since."""
         if not self.allowed():
+            if self.announced:
+                return None
+            self.announced = True
             return "gave-up", False, f"{self.max} restarts in {self.window:.0f} s: needs a person"
+        self.announced = False
         self._times.append(self.clock())
         try:
             ok = bool(self.restart())
@@ -49,8 +57,10 @@ class Healer:
 
 
 class Watchdog:
-    def __init__(self, probes: list, state_dir: Path, healers: dict | None = None, publisher=None, clock=time.time):
+    def __init__(self, probes: list, state_dir: Path, healers: dict | None = None, publisher=None, clock=time.time,
+                 maintenance=lambda: False):
         self.probes, self.dir, self.healers, self.publisher, self.clock = probes, Path(state_dir), healers or {}, publisher, clock
+        self.maintenance = maintenance          # True while a person has stopped the stack on purpose: do not fight them
 
     @property
     def health_log(self) -> Path:
@@ -73,11 +83,18 @@ class Watchdog:
 
     def heal(self, results: list[Result]) -> list[dict]:
         events = []
+        if self.maintenance():
+            return events
         for r in results:
             healer = self.healers.get(r.component)
+            if healer and r.up:
+                healer.reset()
             if r.up or not healer:
                 continue
-            action, ok, detail = healer.attempt()
+            attempt = healer.attempt()
+            if attempt is None:
+                continue
+            action, ok, detail = attempt
             ev = {"ts": self.clock(), "component": r.component, "action": action, "ok": ok, "detail": detail, "was": r.detail}
             _append(self.events_log, ev)
             events.append(ev)

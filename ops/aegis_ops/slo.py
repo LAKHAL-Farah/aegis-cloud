@@ -63,19 +63,31 @@ def _lines(path: Path):
         return
 
 
-def chaos_windows(events_log: Path) -> list[tuple[float, float]]:
-    """Intervals the chaos harness broke things on purpose (events.jsonl chaos-start / chaos-end). They are not the
-    service's failures, so no SLI counts them; the report says how many it left out."""
+def _windows(events_log: Path, start_action: str, end_action: str) -> list[tuple[float, float]]:
     out, start = [], None
     for rec in _lines(events_log):
-        if rec.get("action") == "chaos-start":
+        if rec.get("action") == start_action:
             start = rec["ts"]
-        elif rec.get("action") == "chaos-end" and start is not None:
+        elif rec.get("action") == end_action and start is not None:
             out.append((start, rec["ts"]))
             start = None
     if start is not None:
         out.append((start, float("inf")))
     return out
+
+
+def chaos_windows(events_log: Path) -> list[tuple[float, float]]:
+    """Intervals the chaos harness broke things on purpose (chaos-start / chaos-end in events.jsonl)."""
+    return _windows(events_log, "chaos-start", "chaos-end")
+
+
+def maintenance_windows(events_log: Path) -> list[tuple[float, float]]:
+    """Intervals a person stopped the stack on purpose (`ops.py down` .. `ops.py up`). Down on purpose is not down."""
+    return _windows(events_log, "maintenance-start", "maintenance-end")
+
+
+def in_maintenance(events_log: Path) -> bool:
+    return any(end == float("inf") for _, end in maintenance_windows(events_log))
 
 
 def _excluded(ts: float, windows) -> bool:
@@ -137,9 +149,10 @@ def freshness(slo: dict, findings_dir: Path, since: float, skip=()) -> SloResult
 
 
 def evaluate(config: dict, *, health_log: Path, audit_path: Path, findings_dir: Path, now: float,
-             events_log: Path | None = None) -> list[SloResult]:
-    since = now - float(config.get("window_h", 24)) * 3600
-    skip = chaos_windows(events_log) if events_log else []
+             events_log: Path | None = None, epoch: float = 0.0) -> list[SloResult]:
+    """epoch: ignore everything before it (`ops.py slo --reset`), so an old messy history can be left behind without deleting it."""
+    since = max(now - float(config.get("window_h", 24)) * 3600, epoch)
+    skip = (chaos_windows(events_log) + maintenance_windows(events_log)) if events_log else []
     out = []
     for slo in config["slos"]:
         kind = slo["kind"]

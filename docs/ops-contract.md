@@ -29,3 +29,6 @@ The chaos harness brackets each experiment with `chaos-start` / `chaos-end`; the
 `build/ops/detector-state.json`: `{"version": 1, "sources": {"<name>:<account>": {...}}, "engine": {"seen": [...], "last": {...}}}`.
 A file with another `version`, or one that does not parse, is treated as absent (the detector starts "from now" and says so);
 it never crashes the detector. Written after the sinks each poll, so a crash repeats an alert and never loses one (ADR-0018).
+
+`ops.py down` writes `maintenance-start`, `ops.py up` writes `maintenance-end`: while one is open the watchdog does not restart anything and the SLO report skips those ticks.
+`build/ops/slo-epoch` (written by `make ops-slo-reset`): the report ignores everything before it.

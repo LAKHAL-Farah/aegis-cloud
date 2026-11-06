@@ -9,7 +9,7 @@ changes, CMK deletion, console failures, Config or Organizations changes).
 1. Which control? The alarm name carries it (`4_10_security_group_changes` = CIS 4.10).
 2. Who and what exactly: look the event up. On real AWS: CloudWatch Logs Insights on `/aegis/cloudtrail/aegis-org-trail`,
    `filter eventName = "AuthorizeSecurityGroupIngress"`. On LocalStack these alarms cannot fire (see
-   `docs/evidence/ops-probe.md`); use the detector instead: `ls build/findings`, or the Kibana attack timeline.
+   `docs/evidence/ops-probe.md`; LocalStack also fails to match the compound CIS patterns, `docs/evidence/filter-probe.md`); use the detector instead: `ls build/findings`, or the Kibana attack timeline.
 3. Was it us? Compare with the last `terraform apply` and `docs/evidence/scorecards/`: our own attack runs trigger several of these on purpose.
 
 ## Fix

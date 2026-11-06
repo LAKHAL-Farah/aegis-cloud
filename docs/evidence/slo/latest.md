@@ -1,12 +1,13 @@
-# SLO report (last 24 h, generated 2026-11-05 22:16 UTC)
+# SLO report (last 24 h, generated 2026-11-06 01:05 UTC)
 
 | SLO | Target | SLI | Events | Error budget left | Status |
 | --- | --- | --- | --- | --- | --- |
-| Detection path is up | 99.0% | 74.38% | 119/160 | overspent | **BREACHED** |
-| Findings within 30 s of the event | 95.0% | 15.38% | 2/13 | overspent | **BREACHED** |
+| Detection path is up | 99.0% | 100.00% | 2/2 | 100% | **OK** |
+| Findings within 30 s of the event | 95.0% | - | 0/0 | - | **NO DATA** |
 | Containment machine time within 5 s | 95.0% | - | 0/0 | - | **NO DATA** |
 
-* Findings within 30 s of the event: only 13 events: not enough to say the target holds
+* Detection path is up: only 2 events: not enough to say the target holds
+* Findings within 30 s of the event: no events in the window
 * Containment machine time within 5 s: no events in the window
 
-4 chaos window(s) were excluded: those outages were caused on purpose.
+4 chaos window(s) (chaos runs, or the stack stopped on purpose) were excluded.

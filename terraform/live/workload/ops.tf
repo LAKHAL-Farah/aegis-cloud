@@ -1,6 +1,8 @@
 # Stage 5 operations. Backup and patching are toggles (ADR-0004 pattern): the definitions are portable to real AWS,
-# but LocalStack may not implement every call the provider makes. Run `make ops-probe`, then enable what it says works:
-#   terraform -chdir=terraform/live/workload apply -var enable_backup=true -var enable_patching=true
+# but LocalStack does not implement every call the provider makes. Measured on LocalStack (docs/localstack-limitations.md):
+#   enable_backup   = true  applies cleanly (definitions only: no backup job ever runs)
+#   enable_patching = true  FAILS (CreatePatchBaseline InvalidResourceId; maintenance window target read "empty result")
+#   terraform -chdir=terraform/live/workload apply -var enable_backup=true
 variable "enable_backup" {
   description = "AWS Backup vault, daily plan and selection for the data bucket"
   type        = bool

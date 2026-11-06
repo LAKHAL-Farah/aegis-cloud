@@ -103,3 +103,24 @@ def test_an_unfinished_chaos_window_excludes_everything_after_it(tmp_path):
     events = tmp_path / "events.jsonl"
     events.write_text(json.dumps({"ts": NOW - 5, "action": "chaos-start"}) + "\n")
     assert slo._excluded(NOW, slo.chaos_windows(events))
+
+
+def test_maintenance_windows_and_the_epoch(tmp_path):
+    events = tmp_path / "events.jsonl"
+    events.write_text("\n".join(json.dumps(r) for r in [
+        {"ts": NOW - 100, "action": "maintenance-start"}, {"ts": NOW - 60, "action": "maintenance-end"},
+        {"ts": NOW - 5, "action": "maintenance-start"}]) + "\n")
+    assert slo.maintenance_windows(events) == [(NOW - 100, NOW - 60), (NOW - 5, float("inf"))]
+    assert slo.in_maintenance(events)
+    events.write_text(json.dumps({"ts": NOW, "action": "maintenance-end"}) + "\n")
+    assert not slo.in_maintenance(events)
+
+
+def test_epoch_ignores_older_history(tmp_path):
+    log = tmp_path / "h.jsonl"
+    log.write_text("\n".join(json.dumps({"ts": t, "components": {"detector": {"up": up}}})
+                             for t, up in [(NOW - 100, False), (NOW - 90, False), (NOW - 10, True)]) + "\n")
+    cfg = {"window_h": 24, "slos": [{"id": "a", "title": "A", "kind": "availability", "components": ["detector"], "target": 0.9}]}
+    kw = dict(health_log=log, audit_path=tmp_path / "x", findings_dir=tmp_path / "y", now=NOW)
+    assert slo.evaluate(cfg, **kw)[0].total == 3
+    assert slo.evaluate(cfg, epoch=NOW - 50, **kw)[0].total == 1

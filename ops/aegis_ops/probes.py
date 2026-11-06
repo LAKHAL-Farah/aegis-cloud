@@ -30,11 +30,17 @@ def read_heartbeat(path: Path) -> dict | None:
 
 
 def pid_alive(pid: int) -> bool:
+    """Alive means running, not merely present: a killed child whose parent has not collected it is a zombie, and
+    os.kill(pid, 0) still succeeds for it (measured: that made a killed detector look alive for up to 20 s)."""
     try:
         os.kill(int(pid), 0)
     except (OSError, ValueError):
         return False
-    return True
+    try:
+        with open(f"/proc/{int(pid)}/stat") as fh:
+            return fh.read().rsplit(")", 1)[1].split()[0] != "Z"
+    except (OSError, IndexError):
+        return True                 # no /proc (not Linux): the signal check is all we have
 
 
 class HeartbeatProbe:

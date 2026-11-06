@@ -91,17 +91,18 @@ Detected: 0 of 12. Prevented on hardened: 3 of 12.
 - **PENDING / UNVERIFIED**: no evidence yet. Do not cite in the post.
 - **SCPs are stored and attachable.** They are evaluated only with `ENFORCE_IAM=1`, and not every condition key is verified. The management account is exempt from SCPs in real AWS, so tests use a member account.
 
-## Stage 5: operations (2026-11-05; confirm each line with `make ops-probe` and record the LocalStack version)
-The rows below are what the design assumes until the probe says otherwise. Predictions are in `docs/stage5-predictions.md`.
+## Stage 5: operations (measured 2026-11-06 with `make ops-probe WAIT=150` and a real `terraform apply`; record `localstack --version` next to this)
+Predictions were in `docs/stage5-predictions.md`; where they were wrong, the table says so.
 
-| Capability | Expected here | What the project does about it |
+| Capability | Measured here | What the project does about it |
 | --- | --- | --- |
 | CloudWatch custom metrics | works | the watchdog publishes `Aegis/Pipeline ComponentUp` |
-| CloudWatch alarm evaluation | stored, not evaluated (`set_alarm_state` works) | SLOs computed by us from the watchdog log (ADR-0017); the alarms are portable definitions |
-| CloudTrail to CloudWatch Logs delivery, metric filters firing | unverified, expected not to deliver | CIS 3.4 and 4.1-4.15 proven by `terraform test` and a "definitions exist" live check; the equivalent detections run in our own engine |
-| SSM Patch Manager, Run Command | definitions stored, no instance executes | module behind `enable_patching` (default off); never claimed as "patched" |
-| AWS Backup | vault and plan stored, restore unverified | module behind `enable_backup` (default off); the restore proof is the S3 versioning drill |
-| S3 versioning, delete markers, copy of a version | works | `make ops-drill` |
+| CloudWatch alarm evaluation | **works** (a breaching-on-missing alarm moved OK to ALARM by itself; predicted "stored only") | the pipeline alarms (`Aegis/Pipeline ComponentUp`) can fire here; SLOs are still computed by us so the numbers are the same on real AWS (ADR-0017) |
+| Logs metric filters | **only the simplest shape matches**: a single `{ $.field = "value" }` fires; an unquoted value, `\|\|`, `&&` and every real CIS section 4 pattern do not (`docs/evidence/filter-probe.md`, `make ops-probe-filters`). `test-metric-filter` is not implemented | the 15 CIS filters are the benchmark's own patterns and are correct for real AWS, so they are **not** rewritten to suit LocalStack. They are proven by `terraform test` and the live "definitions exist" check; they cannot be fired here, by trail events or by hand |
+| CloudTrail to CloudWatch Logs delivery | stored only: the trail accepts the log group, no CloudTrail event is delivered to it | CIS 3.4 and 4.1 to 4.15 are proven by `terraform test` and a "definitions exist" live check; the alarms cannot be fired by real API calls here. Our own detectors cover the same event families (ADR-0002) |
+| SSM Patch Manager | **does not apply**: `CreatePatchBaseline` returns `InvalidResourceId` for the provider's request, and reading the maintenance window target returns "empty result". Direct API calls for a bare baseline or window work; Run Command rejects an instance id that does not exist | module `patching` stays behind `enable_patching` (default off), verified by `terraform test` only; never claimed as "patched" |
+| AWS Backup | **definitions apply** (vault, plan, selection, role, KMS key); `start_backup_job` fails, so no job or restore ever runs | module `backup` behind `enable_backup` (default off); the restore proof is the S3 versioning drill, not AWS Backup |
+| S3 versioning, delete markers, copy of a version | works | `make ops-drill`: 6 of 6 objects restored bit for bit, RTO 3.57 s (predicted under 2 s) |
 
 Also, from Stage 5's own code review (ADR-0018):
 * The detector's rule windows (sliding-window correlation) are not checkpointed; a correlation straddling a crash can be missed.
