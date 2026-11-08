@@ -1,0 +1,4 @@
+{
+  "_comment": "Which admin identities are expected. Matched on the principal's name. Everything else that is admin, or can become admin, is a finding. Nothing here names a lab account (tests/test_not_rigged.py).",
+  "expected_admins": ["*break-glass*", "aegis-*"]
+}
