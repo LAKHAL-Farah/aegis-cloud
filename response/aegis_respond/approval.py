@@ -12,6 +12,8 @@ import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
 
+from .advice import HEADER as ADVICE_HEADER
+from .advice import split as split_advice
 from .incident import Incident
 
 
@@ -142,7 +144,8 @@ class SlackApprover:
     def request(self, inc: Incident, plan: list[str], timeout_s: float) -> Decision:
         who = ", ".join(f"<@{u}>" for u in sorted(self.allowed))
         text = (f":rotating_light: *AegisCloud {inc.severity.upper()}*: {inc.title}\nPrincipal: `{inc.principal}`   "
-                f"Technique: {inc.technique}   Rule: {inc.rule}\n\n*Planned actions*\n" + "\n".join(f"- {p}" for p in plan) +
+                f"Technique: {inc.technique}   Rule: {inc.rule}\n\n*Planned actions*\n" + "\n".join(f"- {p}" for p in split_advice(plan)[0]) +
+                (f"\n\n*{ADVICE_HEADER}*\n" + "\n".join(split_advice(plan)[1]) if split_advice(plan)[1] else "") +
                 f"\n\n{who}: react :white_check_mark: to approve or :x: to deny within {timeout_s:.0f} s. Otherwise nothing happens.")
         sent = self.api.call("chat.postMessage", {"channel": self.channel, "text": text})
         chan, ts = sent.get("channel", self.channel), sent["ts"]

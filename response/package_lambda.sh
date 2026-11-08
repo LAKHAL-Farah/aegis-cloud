@@ -20,4 +20,4 @@ with zipfile.ZipFile(target, "w", zipfile.ZIP_DEFLATED) as z:
         info.compress_type, info.external_attr = zipfile.ZIP_DEFLATED, 0o644 << 16
         z.writestr(info, path.read_bytes())
 PY
-sha256sum "$out/aegis-respond.zip" | tee "$out/aegis-respond.zip.sha256"
+(cd "$out" && sha256sum aegis-respond.zip | tee aegis-respond.zip.sha256)   # relative name, so `sha256sum -c` works wherever the files are copied

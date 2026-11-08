@@ -25,6 +25,9 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 
+from aegis_respond.advice import HEADER as ADVICE_HEADER  # noqa: E402
+from aegis_respond.advice import split as split_advice  # noqa: E402
+from aegis_respond.singleton import acquire  # noqa: E402
 from aegis_respond.approval import FileApprover  # noqa: E402
 from aegis_respond.audit import AuditLog  # noqa: E402
 from aegis_respond.clients import is_local  # noqa: E402
@@ -45,9 +48,28 @@ def make_responder(args) -> Responder:
     approver = build_approver(args.approver, state)
     if args.approver == "auto" and args.execute and not is_local(endpoint):
         sys.exit("refusing: --approver auto only works against LocalStack (set --endpoint http://localhost:4566)")
-    return Responder(policy=ResponsePolicy.load(args.policy), approver=approver,
+    policy = ResponsePolicy.load(args.policy)
+    advisor = None
+    if getattr(args, "advisor", "none") == "triage":
+        sys.path.insert(0, str(ROOT / "triage"))
+        from aegis_respond.playbooks import PLAYBOOKS  # noqa: E402
+        from aegis_triage.advisor import make_advisor  # noqa: E402
+        advisor = make_advisor(policy, PLAYBOOKS, findings_dir=ROOT / "build" / "findings", scan_path=ROOT / "build" / "sentinel" / "scan.json")
+        if advisor.explainer_note:
+            print(f"triage: template text only ({advisor.explainer_note})", flush=True)
+    return Responder(policy=policy, approver=approver, advisor=advisor,
                      notifier=build_notifier(on_error=lambda n, e: audit.append("-", "notify", "error", channel=n, reason=e)),
                      audit=audit, ledger=Ledger(state / "ledger.json"), endpoint=endpoint, execute=args.execute)
+
+
+def render(p: dict, indent: str, header: bool = True) -> str:
+    """A pending approval as text: the plan as bullets, then any advice under its own heading (it is not part of the plan)."""
+    plan, adv = split_advice(p["plan"])
+    head = f"\n{p['severity'].upper()}: {p['title']}\n" if header else f"{p['title']}\n"
+    out = head + "\n".join(f"{indent}- {s}" for s in plan)
+    if adv:
+        out += f"\n{indent}{ADVICE_HEADER}:\n" + "\n".join(f"{indent}  {s}" for s in adv)
+    return out
 
 
 def prompt_loop(state: Path, once: bool = False, who: str | None = None, input_fn=input, sleep=time.sleep) -> int:
@@ -58,7 +80,7 @@ def prompt_loop(state: Path, once: bool = False, who: str | None = None, input_f
         pending = FileApprover.pending(approvals)
         if pending:
             p = pending[0]
-            print(f"\n{p['severity'].upper()}: {p['title']}\n" + "\n".join(f"  - {s}" for s in p["plan"]))
+            print(render(p, "  "))
             try:
                 answer = input_fn(f"Approve {p['incident_id']}? [y/N] ")
             except EOFError:
@@ -83,6 +105,8 @@ def main() -> int:
     def common(p):
         p.add_argument("--execute", action="store_true", help="act (after approval). Without it: plan only")
         p.add_argument("--approver", choices=["file", "slack", "auto"], default="file")
+        p.add_argument("--advisor", choices=["none", "triage"], default="none",
+                       help="triage: add an advisory note to what the approver sees (ADR-0020). It decides nothing")
 
     w = sub.add_parser("watch")
     common(w)
@@ -112,7 +136,7 @@ def main() -> int:
 
     if args.cmd == "pending":
         for p in FileApprover.pending(state / "approvals"):
-            print(f"{p['incident_id']}  {p['severity']:8} {p['title']}\n" + "\n".join(f"    - {s}" for s in p["plan"]))
+            print(f"{p['incident_id']}  {p['severity']:8} {render(p, '    ', header=False)}")
         return 0
     if args.cmd == "prompt":
         try:
@@ -148,6 +172,13 @@ def main() -> int:
         out = responder.handle(json.loads(Path(args.finding).read_text()))
         print(f"{out.status}: {out.detail}")
         return 0 if out.status in {"CONTAINED", "DRY_RUN", "NOOP", "SKIPPED"} else 1
+    lock = None
+    if args.execute:
+        lock, holder = acquire("responder", state)
+        if lock is None:
+            print(f"another executing responder (pid {holder}) already holds {state}. Two would act on the same incident and break the audit chain.\n"
+                  f"Stop it first: make respond-down  (or: pkill -f 'response/respond.py')", file=sys.stderr)
+            return 1
     print(f"responder watching {args.findings_dir}  [{mode}, approver={args.approver}]  Ctrl-C to stop", flush=True)
     stop = threading.Event()
     try:

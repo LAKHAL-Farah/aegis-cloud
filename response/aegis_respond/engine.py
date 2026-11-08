@@ -17,6 +17,8 @@ from pathlib import Path
 from botocore.exceptions import BotoCoreError, ClientError
 
 from .approval import AutoApprover, Decision
+from .advice import HEADER
+from .advice import tag as tag_advice
 from .audit import AuditLog
 from .clients import Clients, is_local
 from .incident import SEVERITY_ORDER, Incident
@@ -89,12 +91,13 @@ class Ledger:
 class Responder:
     def __init__(self, *, policy: ResponsePolicy, approver, notifier, audit: AuditLog, ledger: Ledger,
                  endpoint: str | None = None, region: str = "us-east-1", execute: bool = False,
-                 playbooks: dict | None = None, clock=time.time, clients_factory=None):
+                 playbooks: dict | None = None, clock=time.time, clients_factory=None, advisor=None):
         if isinstance(approver, AutoApprover) and execute and not is_local(endpoint):
             raise ValueError("AutoApprover is only allowed against LocalStack: a person must approve on real AWS")
         self.policy, self.approver, self.notifier, self.audit, self.ledger = policy, approver, notifier, audit, ledger
         self.endpoint, self.region, self.execute, self.clock = endpoint, region, execute, clock
         self.playbooks = playbooks if playbooks is not None else PLAYBOOKS
+        self.advisor = advisor          # optional, display only (ADR-0020): lines shown to the approver, never part of the plan
         self._clients = clients_factory or (lambda acct: Clients(acct, endpoint, region))
 
     # -- helpers
@@ -110,6 +113,19 @@ class Responder:
         if text:
             self._say(inc, text)
         return out
+
+    def _advice(self, inc: Incident, summary: list) -> list:
+        """Advisory lines for the person approving. Fails open: advice that errors is dropped, containment never waits for it."""
+        if not self.advisor:
+            return []
+        try:
+            lines = [tag_advice(x) for x in self.advisor(inc, list(summary))][:6]
+        except Exception as exc:  # noqa: BLE001
+            self.audit.append(inc.short, "advice", "error", reason=type(exc).__name__)
+            return []
+        if lines:
+            self.audit.append(inc.short, "advice", "ok", lines=lines)
+        return lines
 
     def match(self, inc: Incident):
         return next((p for p in self.playbooks.values() if p.matches(inc, self.policy)), None)
@@ -159,9 +175,11 @@ class Responder:
         if not plan.actionable:
             out.status, out.detail = NOOP, plan.summary[0]
             return self._finish(out, inc, f"AegisCloud: {inc.title}\n{plan.summary[0]}")
+        advice = self._advice(inc, plan.summary)
         if not self.execute:
             out.status, out.detail = DRY_RUN, "plan only (run with --execute to act)"
-            return self._finish(out, inc, f"[dry run] {inc.title}\n" + "\n".join(f"- {s}" for s in plan.summary))
+            return self._finish(out, inc, f"[dry run] {inc.title}\n" + "\n".join(f"- {s}" for s in plan.summary)
+                                + (f"\n{HEADER}:\n" + "\n".join(advice) if advice else ""))
 
         self._say(inc, f"AegisCloud {inc.severity.upper()}: {inc.title}\nWaiting for approval of {len(plan.targets['actions'])} action(s).")
         t["approval_asked"] = self.clock()
@@ -169,7 +187,7 @@ class Responder:
             decision = presented_decision
         else:
             try:
-                decision = self.approver.request(inc, plan.summary, self.policy.approval_timeout_s)
+                decision = self.approver.request(inc, plan.summary + advice, self.policy.approval_timeout_s)
             except Exception as exc:  # noqa: BLE001 - fail closed
                 decision = Decision(False, "error", f"approval channel failed: {type(exc).__name__}")
         t["approved"] = self.clock()
