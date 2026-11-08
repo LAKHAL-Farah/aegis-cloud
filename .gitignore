@@ -39,3 +39,13 @@ build/alerts/
 
 # --- AegisCloud Stage 3 ---
 siem/wazuh/ossec.conf
+keys/cosign.key
+
+# Local credentials and signing material
+.env.*
+!.env.example
+*.pem
+*.p12
+*.pfx
+*.secret
+credentials.json

@@ -1,0 +1,16 @@
+{
+  "purple twin (no boundary)": {
+    "admin": 1,
+    "expected_admin": 0,
+    "escalates": 1,
+    "capped": 0,
+    "ordinary": 0
+  },
+  "hardened twin (permission boundary)": {
+    "admin": 0,
+    "expected_admin": 1,
+    "escalates": 0,
+    "capped": 0,
+    "ordinary": 3
+  }
+}

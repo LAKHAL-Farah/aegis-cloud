@@ -1,0 +1,97 @@
+{
+  "passed": true,
+  "engine": "langgraph",
+  "median_ms": 1.86,
+  "p95_ms": 3.263,
+  "decisions": [
+    [
+      "read a secret",
+      "AEG-CRED-001",
+      "P4 contain_via_playbook",
+      "same",
+      "none"
+    ],
+    [
+      "weaken public access block",
+      "AEG-EXFIL-002",
+      "P3 contain_via_playbook",
+      "same",
+      "none"
+    ],
+    [
+      "stop the trail",
+      "AEG-EVAS-001",
+      "P2 escalate_to_human",
+      "same",
+      "none"
+    ],
+    [
+      "create a user",
+      "AEG-PERS-001",
+      "P3 escalate_to_human",
+      "same",
+      "none"
+    ],
+    [
+      "schedule key deletion",
+      "AEG-IMPACT-001",
+      "P2 escalate_to_human",
+      "same",
+      "none"
+    ],
+    [
+      "suspend versioning",
+      "AEG-IMPACT-002",
+      "P3 escalate_to_human",
+      "same",
+      "none"
+    ]
+  ],
+  "bad_model": [
+    [
+      "not JSON",
+      "template",
+      "model reply was not JSON"
+    ],
+    [
+      "extra key 'action'",
+      "template",
+      "model text rejected: unexpected shape"
+    ],
+    [
+      "credential id",
+      "template",
+      "model text rejected: something that looks like a credential"
+    ],
+    [
+      "chat mention",
+      "template",
+      "model text rejected: a chat mention"
+    ],
+    [
+      "link",
+      "template",
+      "model text rejected: a link"
+    ],
+    [
+      "emoji code",
+      "template",
+      "model text rejected: an emoji code (could imitate the approval prompt)"
+    ],
+    [
+      "too long",
+      "template",
+      "model text rejected: summary missing or too long"
+    ],
+    [
+      "too many items",
+      "template",
+      "model text rejected: check_next malformed"
+    ],
+    [
+      "markup",
+      "template",
+      "model text rejected: chat markup"
+    ]
+  ]
+}

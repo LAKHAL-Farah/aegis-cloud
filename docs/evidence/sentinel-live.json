@@ -1,0 +1,17 @@
+{
+  "date": "2026-11-08",
+  "source": "console output of `make sentinel-scan` against LocalStack, pasted by the repository owner. Not produced by the assistant",
+  "purple_account": "555555555555",
+  "hardened_account": "379134115842",
+  "accounts": {
+    "111111111111": {"principals": 5, "policies": 5, "unresolved": 0, "escalates": 0, "admin": 0, "expected_admin": 1, "capped": 0, "ordinary": 4},
+    "222222222222": {"principals": 3, "policies": 4, "unresolved": 0, "escalates": 0, "admin": 0, "expected_admin": 1, "capped": 0, "ordinary": 2},
+    "333333333333": {"principals": 3, "policies": 4, "unresolved": 0, "escalates": 0, "admin": 0, "expected_admin": 1, "capped": 0, "ordinary": 2},
+    "444444444444": {"principals": 6, "policies": 6, "unresolved": 0, "escalates": 0, "admin": 0, "expected_admin": 1, "capped": 0, "ordinary": 5},
+    "555555555555": {"principals": 2, "policies": 1, "unresolved": 0, "escalates": 1, "admin": 1, "expected_admin": 0, "capped": 0, "ordinary": 0},
+    "379134115842": {"principals": 6, "policies": 5, "unresolved": 0, "escalates": 0, "admin": 0, "expected_admin": 1, "capped": 0, "ordinary": 5}
+  },
+  "escalation_paths": [{"account": "555555555555", "principal": "intern", "technique": "ESC-01", "label": "iam:CreatePolicyVersion on intern-policy", "attack": "T1098"}],
+  "standing_admins": [{"account": "555555555555", "principal": "dev-svc"}],
+  "leastpriv": "not done: the trail had no events from dev-svc yet (the command ran before any attack)"
+}
