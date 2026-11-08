@@ -1,0 +1,3 @@
+# Optional. LangGraph runs the same nodes as the built-in runner; anthropic is only used when AEG_TRIAGE_LLM=anthropic.
+langgraph>=0.2
+anthropic>=0.40
