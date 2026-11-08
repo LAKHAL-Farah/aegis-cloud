@@ -108,3 +108,5 @@ drift:  ## nightly-style drift check on all roots
 -include detections/detect.mk
 -include response/response.mk
 -include ops/ops.mk
+-include sentinel/sentinel.mk
+-include release/release.mk

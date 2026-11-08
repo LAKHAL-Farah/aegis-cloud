@@ -22,12 +22,13 @@ detect-watch:  ## run the detector in the foreground (Ctrl-C to stop)
 
 detect-up:  ## run the detector in the background (pid in build/detector.pid, log in build/detector.log)
 > mkdir -p build build/alerts build/findings
+> if pgrep -f "[d]etections/detect.py watch" >/dev/null; then echo "a detector is already running: run 'make detect-down' first"; exit 1; fi
 > nohup $(PY) $(DETECT_DIR)/detect.py watch $(DETECT_OPTS) > build/detector.log 2>&1 & echo $$! > build/detector.pid
 > sleep 3
 > if kill -0 "$$(cat build/detector.pid)" 2>/dev/null; then echo "detector running (pid $$(cat build/detector.pid))"; else echo "detector failed to start:"; cat build/detector.log; exit 1; fi
 
-detect-down:  ## stop the background detector
-> if [ -f build/detector.pid ]; then kill "$$(cat build/detector.pid)" 2>/dev/null || true; rm -f build/detector.pid; echo "detector stopped"; else echo "detector was not running"; fi
+detect-down:  ## stop every background detector (not only the one in the pid file)
+> pkill -f "[d]etections/detect.py watch" 2>/dev/null && echo "detector stopped" || echo "detector was not running"; rm -f build/detector.pid
 
 detect-log:  ## show the detector log
 > tail -n 40 build/detector.log
