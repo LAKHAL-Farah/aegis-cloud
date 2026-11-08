@@ -1,0 +1,82 @@
+name: intel-ci
+
+# Stage 6 (IAM Sentinel, triage) and Stage 7 (release tooling, docs checks). No LocalStack, no network, no model.
+on:
+  pull_request:
+    paths:
+      - "sentinel/**"
+      - "triage/**"
+      - "release/**"
+      - "response/**"
+      - "docs/**"
+      - "README.md"
+      - ".gitleaks.toml"
+      - ".github/workflows/intel-ci.yml"
+  push:
+    branches: [main]
+    paths:
+      - "sentinel/**"
+      - "triage/**"
+      - "release/**"
+      - "docs/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: intel-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sentinel:
+    name: IAM Sentinel (evaluator, techniques, least privilege; moto)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r sentinel/requirements.txt
+      - run: python3 -m pytest sentinel/tests -q
+      - name: offline evidence run (both twins, least privilege)
+        run: python3 sentinel/tools/offline_eval.py
+
+  triage:
+    name: triage (decisions, hostile input, bad model, both engines)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r detections/requirements.txt -r response/requirements.txt -r triage/requirements-llm.txt
+      - run: python3 -m pytest triage/tests response/tests/test_advisor_hook.py -q
+      - run: python3 triage/triage.py eval
+
+  release:
+    name: SBOM, signing, verification (real cosign, throwaway key)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: install cosign (pinned version, checksum verified)
+        run: |
+          curl -sSfL -o cosign https://github.com/sigstore/cosign/releases/download/v3.1.4/cosign-linux-amd64
+          echo "424e2c97d0b45fd7a6b608a87f090f35633f4c23ece5f092d48bba11aaf4bbfa  cosign" | sha256sum -c -
+          sudo install -m 0755 cosign /usr/local/bin/cosign
+      - run: pip install -r detections/requirements.txt -r response/requirements.txt
+      - run: python3 -m pytest release/tests -q
+
+  docs:
+    name: docs match the repo and the evidence
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pytest
+      - run: python3 -m pytest docs/tests -q
