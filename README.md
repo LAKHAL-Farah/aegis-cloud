@@ -402,6 +402,8 @@ These gaps shaped the design: a custom detection engine, ASFF output, and a comp
 
 ## Architecture decisions
 
+This project records decisions 0001 to 0023:
+
 | ADR | Decision |
 | --- | --- |
 | 0001 | Multi-account via 12-digit access keys, one provider alias per account |
@@ -409,6 +411,21 @@ These gaps shaped the design: a custom detection engine, ASFF output, and a comp
 | 0003 | Compliance score computed by us (plan + live checks + rule definitions), not by Config |
 | 0004 | Managed-services toggle: `enable_managed_security` is `false` on LocalStack, `true` on real AWS |
 | 0005 | No Config auto-remediation; remediation triggers come from our own detections via EventBridge |
+| [ADR-0019](docs/adr/0019-iam-sentinel-in-memory-graph-read-only.md) | IAM Sentinel uses a read-only in-memory graph |
+| [ADR-0020](docs/adr/0020-triage-code-decides-model-explains.md) | Triage code decides; the model explains |
+| [ADR-0021](docs/adr/0021-signed-reproducible-releases.md) | Releases are signed and reproducible |
+| [ADR-0022](docs/adr/0022-claims-are-generated-from-evidence.md) | Claims are generated from evidence |
+| [ADR-0023](docs/adr/0023-one-executing-responder-per-state-directory.md) | One executing responder per state directory |
+
+## Status
+
+| 1. SecureLanding | Build it right | Modules, CI gates, CIS mapping, compliance score, drift detection |
+| 2. CloudPurple | Attack it, prove you're blind | Vulnerable twin, attack scenarios, "0 detected" baseline |
+| 3. Detection | Give it eyes | Detection engine, ATT&CK coverage matrix, MTTD |
+| 4. Response | Give it reflexes | Playbooks, approval flow, MTTR |
+| 5. Operate and survive | Prove it's resilient | Alarms, patching, backup restore tests, chaos experiment, SLOs |
+| 6. Intelligence | Make it smart | IAM Sentinel, LangGraph triage agent |
+| 7. Polish | Ship it | Diagrams, threat model, signed artifacts, demo video |
 
 ---
 
@@ -433,6 +450,12 @@ These gaps shaped the design: a custom detection engine, ASFF output, and a comp
 - **SCP enforcement** for the management account is exempt in real AWS; enforcement is tested with member accounts.
 - **Coverage is not 100%.** The scorecard lists what is missed, and why.
 - **Non-commercial.** The LocalStack student/hobby license is non-commercial, so this is a learning and portfolio project, not a product.
+
+## What this does not show
+
+- **It does not show production security on real AWS.** The demos and scorecards are simulated on LocalStack.
+- **It does not show complete ATT&CK coverage.** For example, S08 is documented as a limitation rather than presented as detected.
+- **It does not show a guarantee that every attack is prevented.** The scorecard records prevent, detect, and neither outcomes.
 
 ---
 
