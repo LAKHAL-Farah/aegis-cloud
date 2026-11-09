@@ -1,0 +1,13 @@
+{
+  "_comment": "Which evidence file is THE headline run for each claim. README numbers are generated from these and checked by `make docs-check`. Change a path here when a better run replaces an old one; do not edit numbers by hand.",
+  "baseline": "scorecards/baseline.json",
+  "detection": "scorecards/stage3-v8.json",
+  "response": "scorecards/stage4-v7.json",
+  "chaos": "chaos/stage5-v3.json",
+  "chaos_baseline": "chaos/stage5-v3-baseline.json",
+  "drill": "restore-drill.json",
+  "slo": "slo/latest.json",
+  "sentinel": "sentinel-offline.json",
+  "triage": "triage-eval.json",
+  "sentinel_live": "sentinel-live.json"
+}

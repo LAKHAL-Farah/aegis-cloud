@@ -1,0 +1,20 @@
+title = "aegis-cloud"
+
+[extend]
+useDefault = true
+
+# Synthetic values that exist to test detectors and sanitisers. Allowlisted by exact value, not by path, so a real
+# key committed next to them is still found.
+[allowlist]
+description = "fake credentials used as test fixtures"
+regexes = [
+  '''AKIAABCDEFGHIJKLMNOP''',
+  '''AKIAEXAMPLEKEY\d+''',
+  '''AKIAIOSFODNN7EXAMPLE''',
+  '''wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY''',
+]
+paths = [
+  '''(^|/)\.pytest_cache/''',
+  '''__pycache__/''',
+  '''(^|/)\.venv/''',
+]

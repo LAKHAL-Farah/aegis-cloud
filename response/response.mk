@@ -3,6 +3,7 @@ RESP_DIR := response
 RESP_STATE := build/response
 ENDPOINT ?= http://localhost:4566
 APPROVER ?= file
+ADVISOR ?= none
 MEASURE_APPROVER ?= auto
 
 .PHONY: response-install response-test respond-plan respond-up respond-down respond-log respond-pending respond-prompt \
@@ -17,14 +18,15 @@ response-test:  ## playbook, approval, audit and Lambda tests (moto, no LocalSta
 respond-plan:  ## DRY RUN in the foreground: plans and notifies, changes nothing
 > $(PY) $(RESP_DIR)/respond.py --endpoint $(ENDPOINT) watch
 
-respond-up:  ## run the responder in the background and ACT after approval (APPROVER=file|slack)
+respond-up:  ## run the responder in the background and ACT after approval (APPROVER=file|slack, ADVISOR=none|triage)
 > mkdir -p $(RESP_STATE)
-> nohup $(PY) $(RESP_DIR)/respond.py --endpoint $(ENDPOINT) watch --execute --approver $(APPROVER) > $(RESP_STATE)/responder.log 2>&1 & echo $$! > $(RESP_STATE)/responder.pid
+> if pgrep -f "[r]esponse/respond.py .*watch" >/dev/null; then echo "a responder is already running (pids: $$(pgrep -f '[r]esponse/respond.py .*watch' | tr '\n' ' ')): run 'make respond-down' first"; exit 1; fi
+> nohup $(PY) $(RESP_DIR)/respond.py --endpoint $(ENDPOINT) watch --execute --approver $(APPROVER) --advisor $(ADVISOR) > $(RESP_STATE)/responder.log 2>&1 & echo $$! > $(RESP_STATE)/responder.pid
 > sleep 2
 > if kill -0 "$$(cat $(RESP_STATE)/responder.pid)" 2>/dev/null; then echo "responder running (pid $$(cat $(RESP_STATE)/responder.pid), approver=$(APPROVER))"; else echo "responder failed to start:"; cat $(RESP_STATE)/responder.log; exit 1; fi
 
-respond-down:  ## stop the background responder
-> if [ -f $(RESP_STATE)/responder.pid ]; then kill "$$(cat $(RESP_STATE)/responder.pid)" 2>/dev/null || true; rm -f $(RESP_STATE)/responder.pid; echo "responder stopped"; else echo "responder was not running"; fi
+respond-down:  ## stop every background responder (not only the one in the pid file)
+> pkill -f "[r]esponse/respond.py .*watch" 2>/dev/null && echo "responder stopped" || echo "responder was not running"; rm -f $(RESP_STATE)/responder.pid
 
 respond-log:  ## show the responder log
 > tail -n 40 $(RESP_STATE)/responder.log

@@ -195,3 +195,18 @@ def test_pending_never_trips_over_a_half_written_or_vanishing_request(tmp_path):
     (tmp_path / "a.request.json").write_text("")                # what a reader saw mid-write before the atomic rename
     (tmp_path / "b.request.json").write_text('{"incident_id": "b", "plan": []}')
     assert [p["incident_id"] for p in FileApprover.pending(tmp_path)] == ["b"]
+
+
+def test_slack_shows_advice_under_its_own_heading_and_the_plan_stays_a_plan(slack, inc):
+    react_on_post(slack, "white_check_mark", ["U0FARAH"])
+    approver(slack).request(inc, ["Deactivate key", "[triage, advisory only, words by template] P3: x"], 5)
+    text = slack.messages[0]["text"]
+    planned, _, advice_part = text.partition("*Advice (not part of the plan")
+    assert "- Deactivate key" in planned and "[triage" not in planned
+    assert "[triage, advisory only" in advice_part and "- [triage" not in text
+
+
+def test_slack_without_advice_is_unchanged(slack, inc):
+    react_on_post(slack, "white_check_mark", ["U0FARAH"])
+    approver(slack).request(inc, ["Deactivate key"], 5)
+    assert "Advice" not in slack.messages[0]["text"]

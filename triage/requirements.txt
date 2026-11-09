@@ -1,0 +1,2 @@
+# The triage runs on the standard library plus the responder's and detector's own packages.
+pytest>=8.0,<9

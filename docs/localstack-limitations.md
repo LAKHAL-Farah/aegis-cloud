@@ -108,3 +108,18 @@ Also, from Stage 5's own code review (ADR-0018):
 * The detector's rule windows (sliding-window correlation) are not checkpointed; a correlation straddling a crash can be missed.
 * Delivery after a crash is at-least-once: an alert can repeat, never vanish.
 
+
+## Stage 6 and 7 additions (2026-11-06)
+
+These were learned while building IAM Sentinel and the release tooling. Sentinel and triage have so far run only against moto
+(an AWS mock), not against LocalStack, so the LocalStack column is "not yet run" until `make sentinel-scan` has been done.
+
+| Area | Finding | Where it bit | Status |
+| --- | --- | --- | --- |
+| moto: `get_account_authorization_details` | `PolicyName` is missing from customer-managed policies | First collector run (a `KeyError`) | Handled: the name is taken from the ARN |
+| moto: permission boundaries on users | `create_user(PermissionsBoundary=...)` is ignored and `put_user_permissions_boundary` is not implemented. Roles keep their boundary | The hardened-twin fixture | Fixture sets it on the snapshot; the collector also asks `get_user` / `get_role` for each principal's boundary because a dropped boundary overstates risk |
+| LocalStack: IAM listing completeness | Checked 2026-11-08: the collector and scan worked on all six accounts with 0 unresolved policies; neither moto gap appeared | `make sentinel-scan` | Closed for this range |
+| LocalStack: CloudTrail `lookup_events` | Returned 178 events for the weak twin's account before any attack, but none attributed to an IAM user or role. Whether the caller is carried once a principal acts is not yet known | `make sentinel-leastpriv` | Open: repeat after an attack |
+| IAM Sentinel: not modelled | Session policies, resource-based policies, most SCP behaviour, cross-account access, condition evaluation | Any claim of "no path" | Documented in `docs/adr/0019-*.md`; a result is "no path found under these rules", not "safe" |
+| botocore as the action list | Operation names approximate IAM actions. `s3:ListAllMyBuckets` is the operation `ListBuckets`, and the first version counted it as nothing | The least-privilege reduction figure | Fixed for the names in the mapping table; other services may have further differences |
+| cosign v3 offline | Needs a signing config even with a local key; verification with `--insecure-ignore-tlog` | `release/release.sh` | Handled and tested; keyless signing in GitHub Actions has not run yet |
